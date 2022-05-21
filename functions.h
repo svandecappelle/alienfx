@@ -1,10 +1,11 @@
 #include "vars.h"
+#include <unistd.h>
 
 int InitDevice(libusb_context** usbcontext,libusb_device_handle** usbhandle,unsigned short idVendor,unsigned short idProduct)
 {
 	if (0==libusb_init(usbcontext)) {
-    libusb_set_debug(*usbcontext, 3);	
-		if (*usbhandle=libusb_open_device_with_vid_pid(*usbcontext,idVendor,idProduct)) {
+    // libusb_set_debug(*usbcontext, 3);	
+		if ((*usbhandle=libusb_open_device_with_vid_pid(*usbcontext,idVendor,idProduct))) {
 			fprintf(stderr,"device opened\n");
 		} else {
 			return LIBUSB_OPEN_ERR;
@@ -66,102 +67,102 @@ int usbsetdelay(libusb_device_handle* usbhandle,unsigned int delay) {
 }
 
 
-int usbwrite(libusb_device_handle* usbhandle,unsigned char* data,unsigned short len)
-{
-	int retval;
-	int i;
-	if (len!=SEND_DATA_SIZE)
-		return	LIBUSB_SIZE_ERR;
+int usbwrite(libusb_device_handle* usbhandle,unsigned char* data,unsigned short len) {
+  int retval;
+  int i;
+  if (len!=SEND_DATA_SIZE)
+    return LIBUSB_SIZE_ERR;
 
 
-	fprintf(stderr,"write> ");
-	for (i=0;i<SEND_DATA_SIZE;i++) 
-	{
-		fprintf(stderr,"%02x ",0xff&((unsigned int)data[i]));
-	}
-	fprintf(stderr,"\n");
+  fprintf(stderr,"write> ");
+  for (i=0;i<SEND_DATA_SIZE;i++) {
+    fprintf(stderr,"%02x ",0xff&((unsigned int)data[i]));
+  }
+  fprintf(stderr,"\n");
 
-	retval=libusb_control_transfer(usbhandle,
-					SEND_REQUEST_TYPE,
-					SEND_REQUEST,
-					SEND_VALUE,
-					SEND_INDEX,
-					data,
-					SEND_DATA_SIZE,
-					0);
-	if (retval!=SEND_DATA_SIZE)
-		return	LIBUSB_WRITE_ERR;
-	usleep(9000);	
-	return OK;
+  retval=libusb_control_transfer(
+    usbhandle,
+    SEND_REQUEST_TYPE,
+    SEND_REQUEST,
+    SEND_VALUE,
+    SEND_INDEX,
+    data,
+    SEND_DATA_SIZE,
+    0
+  );
+  if (retval!=SEND_DATA_SIZE)
+    return LIBUSB_WRITE_ERR;
+  usleep(9000);	
+  return OK;
 }
-int usbread(libusb_device_handle* usbhandle,char* data,unsigned int len)
-{
-	unsigned char buf[READ_DATA_SIZE];
-	int readbytes;
-	int i;
 
-	if (len!=READ_DATA_SIZE)
-		return	LIBUSB_SIZE_ERR;
+int usbread(libusb_device_handle* usbhandle, unsigned char* data, unsigned int len) {
+  unsigned char buf[READ_DATA_SIZE];
+  int readbytes;
+  int i;
+
+  if (len!=READ_DATA_SIZE)
+    return LIBUSB_SIZE_ERR;
 	
-	readbytes=libusb_control_transfer(usbhandle,
-				READ_REQUEST_TYPE,
-				READ_REQUEST,
-				READ_VALUE,
-				READ_INDEX,
-				buf,
-				READ_DATA_SIZE,
-				0);
-	if (readbytes!=READ_DATA_SIZE)
-		return LIBUSB_READ_ERR;
-	fprintf(stderr,"read>  ");
-	for (i=0;i<READ_DATA_SIZE;i++) 
-	{
-		data[i]=buf[i];
-		fprintf(stderr,"%02x ",0xff&((unsigned int)data[i]));
-	}
-	fprintf(stderr,"\n");
-	return OK;
+  readbytes=libusb_control_transfer(
+    usbhandle,
+    READ_REQUEST_TYPE,
+    READ_REQUEST,
+    READ_VALUE,
+    READ_INDEX,
+    buf,
+    READ_DATA_SIZE,
+    0
+  );
+  if (readbytes!=READ_DATA_SIZE)
+    return LIBUSB_READ_ERR;
+  fprintf(stderr,"read>  ");
+  for (i=0;i<READ_DATA_SIZE;i++) {
+    data[i]=buf[i];
+    fprintf(stderr,"%02x ",0xff&((unsigned int)data[i]));
+  }
+  fprintf(stderr,"\n");
+  return OK;
 }
 
 
-void reset(libusb_device_handle*	usbhandle) {
-	unsigned char data[9]={0x02,0x07,0x04,0x00,0x00,0x00,0x00,0x00,0x00};
-	int retval=usbwrite(usbhandle,data,9);
+void reset(libusb_device_handle* usbhandle) {
+  unsigned char data[9]={0x02,0x07,0x04,0x00,0x00,0x00,0x00,0x00,0x00};
+  usbwrite(usbhandle,data,9);
 }
-void end(libusb_device_handle*	usbhandle) {
-	unsigned char data[9]={0x02,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-	int retval=usbwrite(usbhandle,data,9);
-}
-
-void pge(libusb_device_handle*	usbhandle) {
-	unsigned char data[9]={0x02,0x05,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-	int retval=usbwrite(usbhandle,data,9);
+void end(libusb_device_handle* usbhandle) {
+  unsigned char data[9]={0x02,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+  usbwrite(usbhandle,data,9);
 }
 
-void chk(libusb_device_handle*	usbhandle) {
-	unsigned char data[9]={0x02,0x06,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-	int retval=usbwrite(usbhandle,data,9);
+void pge(libusb_device_handle* usbhandle) {
+  unsigned char data[9]={0x02,0x05,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+  usbwrite(usbhandle,data,9);
+}
+
+void chk(libusb_device_handle* usbhandle) {
+  unsigned char data[9]={0x02,0x06,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+  usbwrite(usbhandle,data,9);
 }
 
 void wait(libusb_device_handle* usbhandle) {
-	unsigned char rply[8];
-	int ready=0;
-	while (!ready)
-	{
-		chk(usbhandle);
-		usbread(usbhandle,rply,8);
-		if (rply[0]==0x11) ready=1;
-	}
+  unsigned char rply[8];
+  int ready=0;
+  while (!ready) {
+    chk(usbhandle);
+    usbread(usbhandle,rply,8);
+    if (rply[0]==0x11) ready=1;
+  }
 }
 
 void setZoneColor(libusb_device_handle*	usbhandle, int zone, int r, int g, int b) {
-	unsigned char data[9]={0x02,0x03,0x05,0x00,0x00,0x01,0x0f,0xf0,0x00};
-	data[4]=(zone>>8)&0xff;
-	data[5]=(zone>>0)&0xff;
-	data[6]=(r<<4); //&0xf0;
-	data[6]|=g; //&0xf);
-	data[7]=(b<<4); //&0xf0;
-	int retval=usbwrite(usbhandle,data,9);
+  unsigned char data[9]={0x02,0x03,0x05,0x00,0x00,0x01,0x0f,0xf0,0x00};
+  data[4]=(zone>>8)&0xff;
+  data[5]=(zone>>0)&0xff;
+  data[6]=(r<<4); //&0xf0;
+  data[6]|=g; //&0xf);
+  data[7]=(b<<4); //&0xf0;
+  usbwrite(usbhandle,data,9);
   end(usbhandle);
   pge(usbhandle);
   reset(usbhandle);
