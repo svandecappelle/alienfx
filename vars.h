@@ -2,6 +2,8 @@
 #define VARS_H
 #include "vars.h"
 
+#define debug 0
+
 #define	ALIENWARE_VENDORID		0x187c
 #define	ALIENWARE_PRODUCTID_M14XR2	0x0521
 
@@ -34,26 +36,26 @@
 #define	ZONE_KEYBOARD_MIDDLE_RIGHT		0x08
 
 #define ZONE_TOUCHPAD 0x0200
-#define ZONE_SPEAKER_RIGHT 0x0020
-#define ZONE_SPEAKER_LEFT 0x0040
+#define ZONE_SPEAKER_RIGHT 0x0040
+#define ZONE_SPEAKER_LEFT 0x0020
 #define ZONE_ALIEN_HEAD 0x0080
 #define ZONE_MEDIABAR 0x1c00
 #define ZONE_POWER_BUTTON 0x2000
 #define ZONE_ALIEN_NAME 0x0100
 
 typedef struct RegionColor {
-  int region;
-  int color[3];
+    int region;
+    int color[3];
 } RegionColor;
 
 typedef struct ChainValue {
-  struct RegionColor *value;
-  struct ChainValue *next;
+    struct RegionColor *value;
+    struct ChainValue *next;
 } ChainValue;
 
 typedef struct Chain {
-  struct ChainValue *value;
-  struct Chain *next;
+    struct ChainValue *value;
+    struct Chain *next;
 } Chain;
 
 #endif
