@@ -4,12 +4,24 @@ Using Cmake
 ```
 mkdir build
 cd build
-make ../
+cmake ../
+make
 ```
 
 # To launch
 ```
+Script mode: 
 ./bin/controller -k r,g,b -l r,g,b <...>
+
+UI mode:
+./bin/controller-ui
+```
+
+Be sure you are able to connect to usbdevices or use script in sudo mode
+
+For UI you shoudl configure the rights in `/etc/udev/rules.d/usb.rules` with this content
+```
+SUBSYSTEM=="usb", MODE="0666"
 ```
 
 With parameters options:
