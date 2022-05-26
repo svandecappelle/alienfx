@@ -86,7 +86,7 @@ struct KeyProperty * get_key_properties(const int key_num_top, const int key_num
     };
     p.height = h - 5;
     p.width = w - 5;
-    p.top = key_num_top * h;
+    p.top = (key_num_top - 1) * h;
 
     if (key_num_top == 4 && key_num_left == 1) {
         // Maj lock Key
@@ -152,13 +152,19 @@ void draw_function (GtkDrawingArea *da,
     GdkRGBA background_color, color;
     const int w = width / 19;
     const int h = w;
-    printf("%p\n", data);
     
     gtk_style_context_get_color(context, &background_color);
-    gdk_rgba_parse(&background_color, "#292630");
+    
+    if (data != NULL) {
+        char *given_color = (char *)data;
+        gdk_rgba_parse(&color, given_color);
+    } else {
+        gdk_rgba_parse(&color, "rgba(255, 0, 0, 1)");
+    }
     // h = height / 2.0;
 
-    gdk_rgba_parse(&color, "rgba(255, 0, 0, 1)");
+    printf("Set color to %s\n", gdk_rgba_to_string(&color));
+    gdk_rgba_parse(&background_color, "#292630");
 
     for (int i=1; i < 7; i+=1) {
         int left = 0;

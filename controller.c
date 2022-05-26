@@ -4,62 +4,15 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "vars.h"
-#include "functions.h"
+#include "lib/utils/vars.h"
+#include "lib/connector.h"
 
 extern int opterr;
 extern char *optarg;
 
-void convertToRgb(RegionColor *r, char *arg) {
-    int i = 0;
-    const char delim[2] = ", ";
-    char *color = malloc(sizeof(arg));
-    color = strcpy(color, arg);
-    color = strtok(color, delim);
-    if (color != NULL) {
-        r->color[i] = atoi(color);
-        i += 1;
-    }
-    while (i < 3) {
-        color = strtok(NULL, delim);
-        r->color[i] = atoi(color);
-        i += 1;
-    }
-}
-
-void addValue(struct Chain *c, struct RegionColor *val) {
-    ChainValue *tmp = c->value;
-
-    c->value = (struct ChainValue *) malloc(sizeof(struct ChainValue));
-    c->value->value = val;
-    if (tmp != NULL) {
-        c->value->next = tmp;
-    } else {
-        c->value->next = NULL;
-    }
-}
-
-struct RegionColor * addRegionColor(struct Chain *colorChain, int region, char *color) {
-    static RegionColor c;
-    c = (RegionColor) {
-        .region = region,
-            .color = {0, 0, 0}
-    };
-    convertToRgb(&c, color);
-    addValue(colorChain, &c);
-    return &c;
-}
-
 int main(int argc, char *argv[]) {
     printf("Starting AlienFX script\n");
-    libusb_context* usbcontext;
-    libusb_device_handle*	usbhandle;
-    int ret = InitDevice(&usbcontext, &usbhandle, ALIENWARE_VENDORID, ALIENWARE_PRODUCTID_M14XR2);
-    if (ret!=0) {
-        printf("Unable to access to Alienware keyboard please try with 'sudo'\n");
-        exit(1);
-    }
-    usbdetach(usbhandle);
+    libusb_device_handle* usbhandle = connect_usb();
     int opt = -1;
     struct RegionColor *v;
     char *value;

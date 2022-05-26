@@ -1,9 +1,12 @@
-#include "vars.h"
+#ifndef FUNCTIONS_H
+#define FUNCTIONS_H
+
 #include <unistd.h>
+#include <libusb-1.0/libusb.h>
 
+#include "vars.h"
 
-int InitDevice(libusb_context** usbcontext,libusb_device_handle** usbhandle,unsigned short idVendor,unsigned short idProduct)
-{
+int InitDevice(libusb_context** usbcontext, libusb_device_handle** usbhandle, unsigned short idVendor, unsigned short idProduct) {
     if (0==libusb_init(usbcontext)) {
         // libusb_set_debug(*usbcontext, 3);	
         if ((*usbhandle=libusb_open_device_with_vid_pid(*usbcontext,idVendor,idProduct))) {
@@ -167,6 +170,53 @@ void setZoneColor(libusb_device_handle*	usbhandle, int zone, int r, int g, int b
     end(usbhandle);
     pge(usbhandle);
     reset(usbhandle);
+    printf("Zone color affected\n");
     // TODO check why this method no seems to work as expected
     // wait(usbhandle);
 }
+
+void convertToRgb(RegionColor *r, char *arg) {
+    int i = 0;
+    const char delim[2] = ", ";
+    char *color = malloc(sizeof(arg));
+    color = strcpy(color, arg);
+    color = strtok(color, delim);
+    if (color != NULL) {
+        r->color[i] = atoi(color);
+        i += 1;
+    }
+    while (i < 3) {
+        color = strtok(NULL, delim);
+        r->color[i] = atoi(color);
+        i += 1;
+    }
+}
+
+void addValue(struct Chain *c, struct RegionColor *val) {
+    ChainValue *tmp = c->value;
+
+    c->value = (struct ChainValue *) malloc(sizeof(struct ChainValue));
+    c->value->value = val;
+    if (tmp != NULL) {
+        c->value->next = tmp;
+    } else {
+        c->value->next = NULL;
+    }
+}
+
+struct RegionColor * addRegionColor(struct Chain *colorChain, int region, char *color) {
+    static RegionColor c;
+    c = (RegionColor) {
+        .region = region,
+            .color = {0, 0, 0}
+    };
+    convertToRgb(&c, color);
+
+    if (colorChain != NULL) {
+        addValue(colorChain, &c);
+    }
+
+    return &c;
+}
+
+#endif
