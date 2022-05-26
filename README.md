@@ -24,7 +24,11 @@ For UI you shoudl configure the rights in `/etc/udev/rules.d/usb.rules` with thi
 SUBSYSTEM=="usb", MODE="0666"
 ```
 
-With parameters options:
+
+---
+
+For script mode
+parameters options:
 
 | Option |                |
 |--------|----------------|
