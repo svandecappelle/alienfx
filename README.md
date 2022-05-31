@@ -14,7 +14,7 @@ Script mode:
 ./bin/controller -k r,g,b -l r,g,b <...>
 
 UI mode:
-./bin/controller-ui
+./bin/alienFx
 ```
 
 Be sure you are able to connect to usbdevices or use script in sudo mode
