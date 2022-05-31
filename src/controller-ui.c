@@ -12,8 +12,17 @@ void color_selected(GtkWidget *color_picker, gpointer data) {
 
 static void activate(GtkApplication *app) {
     GtkWindow *window = (GtkWindow *) gtk_application_window_new(app);
+    gtk_window_set_application(GTK_WINDOW(window), GTK_APPLICATION(app));
     gtk_window_set_title(GTK_WINDOW(window), "AlienFx");
 
+    GtkCssProvider *css_provider = NULL;
+
+    css_provider = gtk_css_provider_new ();
+    gtk_css_provider_load_from_path(css_provider, "src/resources/css/gtk.css");
+
+    gtk_style_context_add_provider_for_display (gdk_display_get_default (),
+            GTK_STYLE_PROVIDER (css_provider),
+            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     GtkGrid *grid = (GtkGrid *) gtk_grid_new();
 
     gtk_window_set_child(window, (GtkWidget *) grid);
@@ -37,7 +46,7 @@ int main(int argc, char **argv) {
             G_APPLICATION_FLAGS_NONE);
     g_signal_connect(app, "activate",
             G_CALLBACK(activate), NULL);
- 
+
     status = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
     return (status);

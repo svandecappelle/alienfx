@@ -1,0 +1,8 @@
+@keyframes awesome {
+  100%{background-image:conic-gradient(from 1turn, red, orange, yellow, green, magenta, blue, purple, red);}
+}
+
+headerbar {
+  background:conic-gradient(red, orange, yellow, green, magenta, blue, purple, red);
+  animation: awesome infinite linear 6s;
+}
