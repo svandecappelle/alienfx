@@ -4,12 +4,16 @@
 #include <gtk/gtk.h>
 #include <libusb-1.0/libusb.h>
 
-void set_color(GtkWidget *area_widget, GdkRGBA *color, libusb_device_handle *usbhandle);
-
-typedef struct _KeyboardWidget {
+typedef struct _LighteningWidget {
     GtkWidget *widget;
-} KeyboardWidget;
+    char *name;
+} LighteningWidget;
 
-struct _KeyboardWidget * get_keyboard(KeyboardWidget *keyboard);
+struct _LighteningWidget * get_keyboard(LighteningWidget *keyboard);
+struct _LighteningWidget * get_touchpad(LighteningWidget *touchpad);
+struct _LighteningWidget * get_mediabar(LighteningWidget *touchpad);
+
+
+void set_color(LighteningWidget *widget, GdkRGBA *color, libusb_device_handle *usbhandle);
 
 #endif

@@ -3,17 +3,22 @@
 #include "lib/connector.h"
 
 libusb_device_handle *usbhandle;
+LighteningWidget touchpad;
+LighteningWidget keyboard;
+LighteningWidget mediabar;
 
 void color_selected(GtkWidget *color_picker, gpointer data) {
     GdkRGBA color;
+    LighteningWidget *w = data;
     gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(color_picker), &color);
-    set_color((GtkWidget *) data, &color, usbhandle);
+    set_color(w, &color, usbhandle);
 }
 
 static void activate(GtkApplication *app) {
     GtkWindow *window = (GtkWindow *) gtk_application_window_new(app);
     gtk_window_set_application(GTK_WINDOW(window), GTK_APPLICATION(app));
     gtk_window_set_title(GTK_WINDOW(window), "AlienFx");
+    gtk_window_maximize(GTK_WINDOW(window));
 
     GtkCssProvider *css_provider = NULL;
 
@@ -23,17 +28,27 @@ static void activate(GtkApplication *app) {
     gtk_style_context_add_provider_for_display (gdk_display_get_default (),
             GTK_STYLE_PROVIDER (css_provider),
             GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-    GtkGrid *grid = (GtkGrid *) gtk_grid_new();
 
+    GtkGrid *grid = (GtkGrid *) gtk_grid_new();
     gtk_window_set_child(window, (GtkWidget *) grid);
-    KeyboardWidget keyboard;
+
     get_keyboard(&keyboard);
-    gtk_grid_attach(grid, keyboard.widget, 0, 0, 4, 1);
+    gtk_grid_attach(grid, keyboard.widget, 0, 1, 8, 1);
+
+    get_touchpad(&touchpad);
+    gtk_grid_attach(grid, touchpad.widget, 0, 2, 8, 1);
+
+    get_mediabar(&mediabar);
+    gtk_grid_attach(grid, mediabar.widget, 0, 0, 2, 1);
+
 
     GtkWidget *color_picker = gtk_color_button_new();
-    gtk_grid_attach(grid, color_picker, 0, 1, 1, 1);
+    gtk_grid_attach(grid, color_picker, 0, 4, 8, 1);
 
-    g_signal_connect(color_picker, "color-set", G_CALLBACK(color_selected), keyboard.widget);
+    g_signal_connect(color_picker, "color-set", G_CALLBACK(color_selected), &keyboard);
+    g_signal_connect(color_picker, "color-set", G_CALLBACK(color_selected), &touchpad);
+    g_signal_connect(color_picker, "color-set", G_CALLBACK(color_selected), &mediabar);
+
     gtk_widget_show((GtkWidget *) window);
 }
 

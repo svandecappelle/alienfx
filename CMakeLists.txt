@@ -23,7 +23,7 @@ set(GRESOURCE_CSS src/resources/css/gtk.css)
 add_custom_target(
     alienFxUI-resource
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${GRESOURCE_CSS}
-    )
+)
 
 add_executable(
     controller
@@ -31,7 +31,7 @@ add_executable(
 
     src/lib/utils/vars.h
     src/lib/utils/functions.h
-    )
+)
 
 configure_file(${GRESOURCE_CSS} ${GRESOURCE_CSS} @ONLY)
 
@@ -45,9 +45,14 @@ add_executable(
     src/lib/utils/functions.h
     src/lib/keyboard.h
     src/lib/keyboard.c
+
     src/lib/key.h
     src/lib/key.c
-    )
+    src/lib/touchpad.h
+    src/lib/touchpad.c
+    src/lib/mediabar.h
+    src/lib/mediabar.c
+)
 
 # Step 5:
 # add_dependencies(${PROJECT_NAME} alienFxUI-resource)

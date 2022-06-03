@@ -42,30 +42,47 @@ void print_one_key(cairo_t *cr, const char *key_text, struct KeyProperty *k_prop
         cairo_rel_line_to(cr, 0, h);
         cairo_rel_line_to(cr, 22, 0);
         cairo_rel_line_to(cr, 0, h + KEY_PADDING - 3);
-        cairo_rel_line_to(cr, w - KEY_PADDING - 12, 0);
-        cairo_rel_line_to(cr, 0, -2 * h - KEY_PADDING + 4);
+        cairo_rel_line_to(cr, w - KEY_PADDING - 14, 0);
+        cairo_rel_line_to(cr, 0, - 2 * h - KEY_PADDING + 2);
         cairo_close_path(cr);
         cairo_fill(cr);
 
         gdk_cairo_set_source_rgba(cr, background_color);
         // Content key
-        cairo_move_to(cr, k_prop->left + KEY_PADDING + 2, k_prop->top + KEY_PADDING +2);
-        cairo_rel_line_to(cr, 0, h - 4);
+        cairo_move_to(cr, k_prop->left + KEY_PADDING + 1, k_prop->top + KEY_PADDING + 1);
+        cairo_rel_line_to(cr, 0, h - 2);
         cairo_rel_line_to(cr, 22, 0);
         cairo_rel_line_to(cr, 0, h + KEY_PADDING - 3);
         cairo_rel_line_to(cr, w - KEY_PADDING - 16, 0);
-        cairo_rel_line_to(cr, 0, -2 * (h - 4) - KEY_PADDING);
+        cairo_rel_line_to(cr, 0, - 2 * (h - 2) - KEY_PADDING);
         cairo_close_path(cr);
 
         cairo_fill(cr);
     } else {
-        cairo_rectangle(cr, k_prop->left + KEY_PADDING, k_prop->top + KEY_PADDING, w, h);
-        cairo_fill(cr);
+        double x = k_prop->left + KEY_PADDING,
+               y = k_prop->top + KEY_PADDING,
+               tw = w,
+               th = h;
+        double aspect = 1.0;
+        double corner_radius = (th - 4) / 30.0;
+        double radius = corner_radius / aspect;
+        double degrees = M_PI / 180.0;
 
-        // key
+        // cairo_rectangle(cr, w, 0, w + 4, h - 4);
         gdk_cairo_set_source_rgba(cr, background_color);
-        cairo_rectangle(cr, k_prop->left + KEY_PADDING + 2, k_prop->top + KEY_PADDING + 2 , w - 4, h - 4);
-        cairo_fill(cr);
+
+        cairo_new_sub_path(cr);
+        cairo_arc(cr, x + tw - radius, y + radius, radius, -90 * degrees, 0 * degrees);
+        cairo_arc(cr, x + tw - radius, y + th - radius, radius, 0 * degrees, 90 * degrees);
+        cairo_arc(cr, x + radius, y + th - radius, radius, 90 * degrees, 180 * degrees);
+        cairo_arc(cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
+        cairo_close_path(cr);
+        // cairo_fill(cr);
+        cairo_fill_preserve(cr);
+        gdk_cairo_set_source_rgba(cr, color);
+
+        cairo_set_line_width(cr, 1.0);
+        cairo_stroke(cr);
     }
 
     gdk_cairo_set_source_rgba(cr, color);
@@ -86,7 +103,7 @@ struct KeyProperty * get_key_properties(const int key_num_top, const int key_num
     };
     p.height = h - 5;
     p.width = w - 5;
-    p.top = (key_num_top - 1) * h;
+    p.top = (key_num_top - 1) * h - (h / 2) + KEY_PADDING;
 
     if (key_num_top == 4 && key_num_left == 1) {
         // Maj lock Key
@@ -98,7 +115,7 @@ struct KeyProperty * get_key_properties(const int key_num_top, const int key_num
     if (key_num_top == 1) {
         p.width = w - 9;
 
-        p.top = p.top + (h / 2) - 5;
+        p.top = 0; // p.top + (h / 2) - 5;
         p.height = h / 2;
     }
     if (key_num_top == 5 && key_num_left == 13) {
@@ -141,7 +158,7 @@ struct KeyProperty * get_key_properties(const int key_num_top, const int key_num
     return &p;
 }
 
-void draw_function (GtkDrawingArea *da,
+void draw_keyboard (GtkDrawingArea *da,
         cairo_t        *cr,
         int             width,
         int             height,
@@ -152,9 +169,9 @@ void draw_function (GtkDrawingArea *da,
     GdkRGBA background_color, color;
     const int w = width / 19;
     const int h = w;
-    
+
     gtk_style_context_get_color(context, &background_color);
-    
+
     if (data != NULL) {
         char *given_color = (char *)data;
         gdk_rgba_parse(&color, given_color);
