@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #include "lib/utils/vars.h"
-#include "lib/connector.h"
+#include "lib/utils/functions.h"
 
 extern int opterr;
 extern char *optarg;
@@ -24,36 +24,36 @@ int main(int argc, char *argv[]) {
 
         switch (opt) {
             case 'k':
-                v = addRegionColor(colorChain, ZONE_KEYBOARD_LEFT, value);
-                setZoneColor(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
+                v = add_region_color(colorChain, ZONE_KEYBOARD_LEFT, value);
+                set_zone_color(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
 
-                v = addRegionColor(colorChain, ZONE_KEYBOARD_MIDDLE_LEFT, value);
-                setZoneColor(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
+                v = add_region_color(colorChain, ZONE_KEYBOARD_MIDDLE_LEFT, value);
+                set_zone_color(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
 
-                v = addRegionColor(colorChain, ZONE_KEYBOARD_MIDDLE_RIGHT, value);
-                setZoneColor(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
+                v = add_region_color(colorChain, ZONE_KEYBOARD_MIDDLE_RIGHT, value);
+                set_zone_color(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
 
-                v = addRegionColor(colorChain, ZONE_KEYBOARD_RIGHT, value);
-                setZoneColor(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
+                v = add_region_color(colorChain, ZONE_KEYBOARD_RIGHT, value);
+                set_zone_color(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
                 break;
             case 'l':
-                v = addRegionColor(colorChain, ZONE_ALIEN_NAME, value);
-                setZoneColor(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
+                v = add_region_color(colorChain, ZONE_ALIEN_NAME, value);
+                set_zone_color(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
                 break;
             case 's':
-                v = addRegionColor(colorChain, ZONE_SPEAKER_LEFT, value);
-                setZoneColor(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
+                v = add_region_color(colorChain, ZONE_SPEAKER_LEFT, value);
+                set_zone_color(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
 
-                v = addRegionColor(colorChain, ZONE_SPEAKER_RIGHT, value);
-                setZoneColor(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
+                v = add_region_color(colorChain, ZONE_SPEAKER_RIGHT, value);
+                set_zone_color(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
                 break;
             case 't':
-                v = addRegionColor(colorChain, ZONE_TOUCHPAD, value);
-                setZoneColor(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
+                v = add_region_color(colorChain, ZONE_TOUCHPAD, value);
+                set_zone_color(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
                 break;
             case 'm':
-                v = addRegionColor(colorChain, ZONE_MEDIABAR, value);
-                setZoneColor(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
+                v = add_region_color(colorChain, ZONE_MEDIABAR, value);
+                set_zone_color(usbhandle, v->region, v->color[0], v->color[1], v->color[2]);
                 break;
             default: /* '?' */
                 exit(EXIT_FAILURE);

@@ -5,7 +5,7 @@ const int KEY_WIDTH = 24;
 const int KEY_PADDING = 8;
 int window_width = 0;
 
-const char *keys[6][18] = {
+char *keys[6][18] = {
     {"Esc", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "Pause", "Impr.E", "Inser", "Suppr"},
     {"²", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "°", "+", "ret", "arrow", NULL, NULL, NULL},
     {"⇄", "A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "-", "$", "Enter", "Page up", NULL, NULL, NULL},
@@ -19,6 +19,14 @@ struct KeyProperty {
     int top;
     int height;
     int width;
+    int zone;
+};
+
+char *ZONES[4] = {
+    "left",
+    "middle_left",
+    "middle_right",
+    "right"
 };
 
 void print_one_key(cairo_t *cr, const char *key_text, struct KeyProperty *k_prop, GdkRGBA *background_color, GdkRGBA *color) {
@@ -99,11 +107,13 @@ struct KeyProperty * get_key_properties(const int key_num_top, const int key_num
         .left=0,
         .top=0,
         .height=0,
-        .width=0
+        .width=0,
+        .zone=0
     };
     p.height = h - 5;
     p.width = w - 5;
     p.top = (key_num_top - 1) * h - (h / 2) + KEY_PADDING;
+    p.zone = key_num_left / 5;
 
     if (key_num_top == 4 && key_num_left == 1) {
         // Maj lock Key
@@ -163,7 +173,6 @@ void draw_keyboard (GtkDrawingArea *da,
         int             width,
         int             height,
         gpointer        data) {
-    printf("w %d - h %d", width, height);
     window_width = width;
     GtkStyleContext *context = gtk_widget_get_style_context(GTK_WIDGET(da));
     GdkRGBA background_color, color;
@@ -171,10 +180,25 @@ void draw_keyboard (GtkDrawingArea *da,
     const int h = w;
 
     gtk_style_context_get_color(context, &background_color);
+    int specific_zone = -1;
 
     if (data != NULL) {
-        char *given_color = (char *)data;
-        gdk_rgba_parse(&color, given_color);
+        char *given_color = NULL;
+
+        for (int i=0; i < 4; i+=1) {
+            char *given_input = (char *) data;
+            char *zone_name = ZONES[i];
+            char c_zone[strlen(zone_name) + 5];
+            sprintf(c_zone, "zone:%s", zone_name);
+            if (strstr(given_input, c_zone)) {
+                given_color = strncpy(c_zone, &given_input[strlen(c_zone)], strlen((char *)data));
+                specific_zone = i;
+            } else {
+                given_color = (char *) data;
+            }
+
+            gdk_rgba_parse(&color, given_color);
+        } 
     } else {
         gdk_rgba_parse(&color, "rgba(255, 0, 0, 1)");
     }
@@ -206,7 +230,9 @@ void draw_keyboard (GtkDrawingArea *da,
                     left += w + 52;
                 }
                 key_prop->left = left;
-                print_one_key(cr, key_char, key_prop, &background_color, &color);
+                if (specific_zone == -1 || specific_zone == key_prop->zone) {
+                    print_one_key(cr, key_char, key_prop, &background_color, &color);
+                }
                 left = left + key_prop->width + 5;
             }
         }

@@ -14,6 +14,6 @@ struct _LighteningWidget * get_touchpad(LighteningWidget *touchpad);
 struct _LighteningWidget * get_mediabar(LighteningWidget *touchpad);
 
 
-void set_color(LighteningWidget *widget, GdkRGBA *color, libusb_device_handle *usbhandle);
+void set_color(LighteningWidget *widget, GdkRGBA *color, libusb_device_handle *usbhandle, char *subzone);
 
 #endif

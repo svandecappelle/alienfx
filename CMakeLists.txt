@@ -31,6 +31,7 @@ add_executable(
 
     src/lib/utils/vars.h
     src/lib/utils/functions.h
+    src/lib/utils/functions.c
 )
 
 configure_file(${GRESOURCE_CSS} ${GRESOURCE_CSS} @ONLY)
@@ -43,6 +44,7 @@ add_executable(
 
     src/lib/utils/vars.h
     src/lib/utils/functions.h
+    src/lib/utils/functions.c
     src/lib/keyboard.h
     src/lib/keyboard.c
 
