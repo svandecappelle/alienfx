@@ -183,10 +183,10 @@ void draw_keyboard (GtkDrawingArea *da,
     int specific_zone = -1;
 
     if (data != NULL) {
-        char *given_color = NULL;
+        char *given_color = NULL; // malloc( * sizeof(char));
 
         for (int i=0; i < 4; i+=1) {
-            char *given_input = (char *) data;
+            char *given_input = *((char **) data);
             char *zone_name = ZONES[i];
             char c_zone[strlen(zone_name) + 5];
             sprintf(c_zone, "zone:%s", zone_name);
@@ -197,8 +197,9 @@ void draw_keyboard (GtkDrawingArea *da,
                 given_color = (char *) data;
             }
 
+            printf("Color given: %s\n", (char *) data);
             gdk_rgba_parse(&color, given_color);
-        } 
+        }
     } else {
         gdk_rgba_parse(&color, "rgba(255, 0, 0, 1)");
     }
@@ -208,7 +209,7 @@ void draw_keyboard (GtkDrawingArea *da,
     gdk_rgba_parse(&background_color, "#292630");
 
     for (int i=1; i < 7; i+=1) {
-        int left = 0;
+        int left = 90;
         for (int j=1; j < 18; j+=1) {
             const char *key_char = keys[i - 1][j - 1];
             if (key_char != NULL) {

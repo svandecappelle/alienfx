@@ -1,4 +1,5 @@
 #include <gtk/gtk.h>
+#include "layout/color_selector.h"
 #include "lib/keyboard.h"
 #include "lib/utils/functions.h"
 
@@ -6,6 +7,11 @@ libusb_device_handle *usbhandle;
 LighteningWidget touchpad;
 LighteningWidget keyboard;
 LighteningWidget mediabar;
+
+const int LEFT = 0;
+const int MIDDLE_LEFT = 1;
+const int MIDDLE_RIGHT = 2;
+const int RIGHT = 3;
 
 char * zones[4] = {
     "left",
@@ -19,14 +25,13 @@ GdkRGBA middle_left_color;
 GdkRGBA middle_right_color;
 GdkRGBA right_color;
 
-
-void set_colors_keyboard(LighteningWidget *w) {
+void set_colors_keyboard(LighteningWidget *w, int zone) {
     GdkRGBA *colors[4] = {
         &left_color, &middle_left_color, &middle_right_color, &right_color
     };
     for (int i =0; i<4; i+=1) {
-        if (colors[i]) {
-            // printf("zone key: %s colors ; %s\n", zones[i], keyboard_colors[i]->red);
+        if (colors[i] && i == zone) {
+            printf("zone key: %s colors ; %f\n", zones[i], colors[i]->red);
             set_color(w, colors[i], usbhandle, zones[i]);
        }
     }
@@ -35,25 +40,25 @@ void set_colors_keyboard(LighteningWidget *w) {
 void color_selected_left(GtkWidget *color_picker, gpointer data) {
     LighteningWidget *w = data;
     gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(color_picker), &left_color);
-    set_colors_keyboard(w);
+    set_colors_keyboard(w, LEFT);
 }
 
 void color_selected_middle_left(GtkWidget *color_picker, gpointer data) {
     LighteningWidget *w = data;
     gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(color_picker), &middle_left_color);
-    set_colors_keyboard(w);
+    set_colors_keyboard(w, MIDDLE_LEFT);
 }
 
 void color_selected_middle_right(GtkWidget *color_picker, gpointer data) {
     LighteningWidget *w = data;
     gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(color_picker), &middle_right_color);
-    set_colors_keyboard(w);
+    set_colors_keyboard(w, MIDDLE_RIGHT);
 }
 
 void color_selected_right(GtkWidget *color_picker, gpointer data) {
     LighteningWidget *w = data;
     gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(color_picker), &right_color);
-    set_colors_keyboard(w);
+    set_colors_keyboard(w, RIGHT);
 }
 
 void color_selected(GtkWidget *color_picker, gpointer data) {
@@ -75,6 +80,11 @@ static void activate(GtkApplication *app) {
     gtk_window_set_title(GTK_WINDOW(window), "AlienFx");
     gtk_window_maximize(GTK_WINDOW(window));
 
+    GtkWidget *header = gtk_header_bar_new();
+    GtkWidget *all_zones_color_button = gtk_color_button_new();
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(header), all_zones_color_button);
+    gtk_window_set_titlebar(window, header);
+
     GtkCssProvider *css_provider = NULL;
 
     css_provider = gtk_css_provider_new ();
@@ -84,8 +94,11 @@ static void activate(GtkApplication *app) {
             GTK_STYLE_PROVIDER (css_provider),
             GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
+    GtkFixed *content = (GtkFixed *) gtk_fixed_new();
     GtkGrid *grid = (GtkGrid *) gtk_grid_new();
-    gtk_window_set_child(window, (GtkWidget *) grid);
+    gtk_fixed_put(content, GTK_WIDGET(grid), 0, 0);
+    gtk_window_set_child(window, (GtkWidget *) content);
+    gtk_fixed_put(content, color_selectors_widget_new(), 0, 0);
 
     get_mediabar(&mediabar);
     gtk_grid_attach(grid, mediabar.widget, 0, 0, 2, 1);
@@ -110,13 +123,11 @@ static void activate(GtkApplication *app) {
     GtkWidget *color_picker_right = gtk_color_button_new();
     gtk_grid_attach(grid, color_picker_right, 6, 2, 2, 1);
 
-    // All
-    GtkWidget *color_picker = gtk_color_button_new();
-    gtk_grid_attach(grid, color_picker, 0, 4, 8, 1);
 
-    g_signal_connect(color_picker, "color-set", G_CALLBACK(color_selected), &keyboard);
-    g_signal_connect(color_picker, "color-set", G_CALLBACK(color_selected), &touchpad);
-    g_signal_connect(color_picker, "color-set", G_CALLBACK(color_selected), &mediabar);
+    // TODO set all zones not only keyboard
+    g_signal_connect(all_zones_color_button, "color-set", G_CALLBACK(color_selected), &keyboard);
+    g_signal_connect(all_zones_color_button, "color-set", G_CALLBACK(color_selected), &touchpad);
+    g_signal_connect(all_zones_color_button, "color-set", G_CALLBACK(color_selected), &mediabar);
 
     g_signal_connect(color_picker_left, "color-set", G_CALLBACK(color_selected_left), &keyboard);
     g_signal_connect(color_picker_middle_left, "color-set", G_CALLBACK(color_selected_middle_left), &keyboard);

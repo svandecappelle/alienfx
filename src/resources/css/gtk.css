@@ -3,6 +3,7 @@
 }
 
 headerbar {
-  background:conic-gradient(red, orange, yellow, green, magenta, blue, purple, red);
+  /*background:conic-gradient(red, orange, yellow, green, magenta, blue, purple, red);
   animation: awesome infinite linear 6s;
+  */
 }

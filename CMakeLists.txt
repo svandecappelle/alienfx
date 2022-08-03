@@ -42,6 +42,9 @@ add_executable(
 
     ${CMAKE_CURRENT_BINARY_DIR}/../${GRESOURCE_CSS}
 
+    src/layout/color_selector.h
+    src/layout/color_selector.c
+
     src/lib/utils/vars.h
     src/lib/utils/functions.h
     src/lib/utils/functions.c
@@ -54,6 +57,8 @@ add_executable(
     src/lib/touchpad.c
     src/lib/mediabar.h
     src/lib/mediabar.c
+    src/lib/speakers.h
+    src/lib/speakers.c
 )
 
 # Step 5:

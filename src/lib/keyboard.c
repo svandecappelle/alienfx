@@ -20,10 +20,10 @@ void set_color(LighteningWidget *widget, GdkRGBA *color, libusb_device_handle *u
         if (subzone != NULL) {
             char *zone_color = (char *) malloc(100 * sizeof(char));
             sprintf(zone_color, "zone:%s%s", subzone, c);
-            gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(widget->widget), draw_keyboard, zone_color, NULL); 
+            gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(widget->widget), draw_keyboard, &zone_color, NULL); 
             free(zone_color);
         } else {
-            gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(widget->widget), draw_keyboard, c, NULL); 
+            gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(widget->widget), draw_keyboard, &c, NULL); 
         }
         if (subzone == NULL || strcmp(subzone, "left") == 0) {
             set_zone_color(usbhandle, ZONE_KEYBOARD_LEFT, r, g, b);
@@ -39,11 +39,11 @@ void set_color(LighteningWidget *widget, GdkRGBA *color, libusb_device_handle *u
         }
     }
     if (strcmp(widget->name, "touchpad") == 0) {
-        gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(widget->widget), draw_touchpad, c, NULL); 
+        gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(widget->widget), draw_touchpad, &c, NULL); 
         set_zone_color(usbhandle, ZONE_TOUCHPAD, r, g, b);
     }
     if (strcmp(widget->name, "mediabar") == 0) {
-        gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(widget->widget), draw_mediabar, c, NULL); 
+        gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(widget->widget), draw_mediabar, &c, NULL); 
         set_zone_color(usbhandle, ZONE_MEDIABAR, r, g, b);
     }
 }
