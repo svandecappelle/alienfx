@@ -160,7 +160,7 @@ void wait(libusb_device_handle* usbhandle) {
     while (!ready) {
         chk(usbhandle);
         usbread(usbhandle,rply,8);
-        if (rply[0]==0x11) ready=1;
+        if (rply[0]==0x10) ready=1;
     }
 }
 
@@ -221,7 +221,7 @@ void set_zone_color(libusb_device_handle*	usbhandle, int zone, int r, int g, int
     end(usbhandle);
     pge(usbhandle);
     reset(usbhandle);
-    // printf("Zone color affected\n");
+    printf("Zone color affected %d\n", zone);
 
     // New version
     // unsigned char green = (g >> 4) & 0x0f;
@@ -246,7 +246,7 @@ void set_zone_color(libusb_device_handle*	usbhandle, int zone, int r, int g, int
     // usbwrite(usbhandle, &data[0], sizeof data);
 
     // TODO check why this method no seems to work as expected
-    // wait(usbhandle);
+    wait(usbhandle);
 }
 
 libusb_device_handle * connect_usb() {

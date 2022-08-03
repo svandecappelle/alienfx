@@ -1,4 +1,5 @@
 #include <gtk/gtk.h>
+#include "keyboard.h"
 
 const int KEY_HEIGHT = 24;
 const int KEY_WIDTH = 24;
@@ -20,13 +21,6 @@ struct KeyProperty {
     int height;
     int width;
     int zone;
-};
-
-char *ZONES[4] = {
-    "left",
-    "middle_left",
-    "middle_right",
-    "right"
 };
 
 void print_one_key(cairo_t *cr, const char *key_text, struct KeyProperty *k_prop, GdkRGBA *background_color, GdkRGBA *color) {
@@ -102,7 +96,7 @@ void print_one_key(cairo_t *cr, const char *key_text, struct KeyProperty *k_prop
     cairo_show_text(cr, c);
 }
 
-struct KeyProperty * get_key_properties(const int key_num_top, const int key_num_left, const int w, const int h) {
+struct KeyProperty * get_key_properties(const int key_num_top, const int key_num_left, const int w, const int h, char *key) {
     static struct KeyProperty p = {
         .left=0,
         .top=0,
@@ -114,6 +108,7 @@ struct KeyProperty * get_key_properties(const int key_num_top, const int key_num
     p.width = w - 5;
     p.top = (key_num_top - 1) * h - (h / 2) + KEY_PADDING;
     p.zone = key_num_left / 5;
+    // printf("%d, %s\n", p.zone, key);
 
     if (key_num_top == 4 && key_num_left == 1) {
         // Maj lock Key
@@ -175,37 +170,28 @@ void draw_keyboard (GtkDrawingArea *da,
         gpointer        data) {
     window_width = width;
     GtkStyleContext *context = gtk_widget_get_style_context(GTK_WIDGET(da));
-    GdkRGBA background_color, color;
+    GdkRGBA background_color, color, default_color;
     const int w = width / 19;
     const int h = w;
 
+    const char * DEFAULT_COLOR = "rgba(255, 0, 0, 1)";
+    gdk_rgba_parse(&default_color, DEFAULT_COLOR);
     gtk_style_context_get_color(context, &background_color);
-    int specific_zone = -1;
-
+    
+    ColorZones *d; 
+    int nb_zones = 0;
     if (data != NULL) {
-        char *given_color = NULL; // malloc( * sizeof(char));
-
-        for (int i=0; i < 4; i+=1) {
-            char *given_input = *((char **) data);
-            char *zone_name = ZONES[i];
-            char c_zone[strlen(zone_name) + 5];
-            sprintf(c_zone, "zone:%s", zone_name);
-            if (strstr(given_input, c_zone)) {
-                given_color = strncpy(c_zone, &given_input[strlen(c_zone)], strlen((char *)data));
-                specific_zone = i;
-            } else {
-                given_color = (char *) data;
-            }
-
-            printf("Color given: %s\n", (char *) data);
-            gdk_rgba_parse(&color, given_color);
-        }
+        d = (ColorZones *) data;
+        nb_zones = d->lenght;
+    }
+    if (data != NULL) {
+        // printf("Color given %d, %s \n", given_data->zone, given_data->color);
+        // gdk_rgba_parse(&color, given_data->color);
     } else {
         gdk_rgba_parse(&color, "rgba(255, 0, 0, 1)");
     }
     // h = height / 2.0;
 
-    printf("Set color to %s\n", gdk_rgba_to_string(&color));
     gdk_rgba_parse(&background_color, "#292630");
 
     for (int i=1; i < 7; i+=1) {
@@ -213,7 +199,7 @@ void draw_keyboard (GtkDrawingArea *da,
         for (int j=1; j < 18; j+=1) {
             const char *key_char = keys[i - 1][j - 1];
             if (key_char != NULL) {
-                struct KeyProperty *key_prop = get_key_properties(i, j, w, h);
+                struct KeyProperty *key_prop = get_key_properties(i, j, w, h, key_char);
                 if (
                         (
                          j == 15 && i == 3
@@ -231,8 +217,19 @@ void draw_keyboard (GtkDrawingArea *da,
                     left += w + 52;
                 }
                 key_prop->left = left;
-                if (specific_zone == -1 || specific_zone == key_prop->zone) {
-                    print_one_key(cr, key_char, key_prop, &background_color, &color);
+
+                bool found = false;
+                for (int ci = 0; ci < nb_zones; ci += 1){
+                    ColorZone *zc = d->zones[ci];
+                    if (zc != NULL && zc->zone == key_prop->zone && zc->color != NULL) {
+                        GdkRGBA new_color;
+                        gdk_rgba_parse(&new_color, zc->color);
+                        found = true;
+                        print_one_key(cr, key_char, key_prop, &background_color, &new_color);
+                    }
+                }
+                if (!found) {
+                    print_one_key(cr, key_char, key_prop, &background_color, &default_color);
                 }
                 left = left + key_prop->width + 5;
             }

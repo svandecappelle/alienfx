@@ -16,7 +16,6 @@ void draw_touchpad(GtkDrawingArea *da, cairo_t *cr, int width, int height, gpoin
         gdk_rgba_parse(&color, "rgba(255, 0, 0, 1)");
     }
 
-    printf("Set color to %s\n", gdk_rgba_to_string(&color));
     gdk_rgba_parse(&background_color, "#292630");
 
     double x = w,
