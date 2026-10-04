@@ -105,10 +105,33 @@ install(TARGETS controller ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_B
 install(FILES data/${APP_ID}.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 install(FILES data/${APP_ID}.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
 install(FILES data/icons/${APP_ID}.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+
+# PNG renditions of the logo, for the icon lookups that don't use SVG
+set(ICON_SVG ${CMAKE_CURRENT_SOURCE_DIR}/data/icons/${APP_ID}.svg)
+find_program(RSVG_CONVERT rsvg-convert)
+if(RSVG_CONVERT)
+    set(ICON_PNGS "")
+    foreach(size 16 24 32 48 64 128 256 512)
+        set(icon_dir ${CMAKE_CURRENT_BINARY_DIR}/icons/${size}x${size})
+        set(icon_png ${icon_dir}/${APP_ID}.png)
+        add_custom_command(
+            OUTPUT ${icon_png}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${icon_dir}
+            COMMAND ${RSVG_CONVERT} -w ${size} -h ${size} -o ${icon_png} ${ICON_SVG}
+            DEPENDS ${ICON_SVG}
+        )
+        list(APPEND ICON_PNGS ${icon_png})
+        install(FILES ${icon_png} DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${size}x${size}/apps)
+    endforeach()
+    add_custom_target(icons ALL DEPENDS ${ICON_PNGS})
+else()
+    message(WARNING "rsvg-convert not found (librsvg): only the SVG icon will be installed")
+endif()
 install(FILES udev/70-alienfx.rules DESTINATION ${UDEV_RULES_DIR})
 
 # alienfx-desktop-icon: puts a launcher on the user's desktop (run as the user)
 set(DESKTOP_FILE ${CMAKE_INSTALL_FULL_DATADIR}/applications/${APP_ID}.desktop)
+set(ICON_DIR ${CMAKE_INSTALL_FULL_DATADIR}/icons/hicolor)
 configure_file(data/alienfx-desktop-icon.in ${CMAKE_CURRENT_BINARY_DIR}/alienfx-desktop-icon @ONLY)
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/alienfx-desktop-icon DESTINATION ${CMAKE_INSTALL_BINDIR})
 

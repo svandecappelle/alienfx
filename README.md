@@ -5,7 +5,8 @@ command line tool (`alienfx-cli`).
 
 # Build and install
 
-Requires CMake, a C compiler, GTK 4 and libusb 1.0.
+Requires CMake, a C compiler, GTK 4 and libusb 1.0 (and `rsvg-convert` from
+librsvg to generate the PNG icons, otherwise only the SVG icon is installed).
 
 ```
 cmake -B build
@@ -17,7 +18,7 @@ This installs:
 
 - `alienfx` (the UI, in your application menu as *AlienFX*) and `alienfx-cli`
 - `alienfx-desktop-icon`, to put an AlienFX icon on your desktop (see below)
-- the desktop entry, icon and AppStream metadata
+- the desktop entry, the logo icon (SVG and PNG from 16 to 512 px) and AppStream metadata
 - a udev rule giving the logged in user access to the AlienFX controller, so
   neither program needs `sudo`
 
@@ -34,8 +35,9 @@ alienfx-desktop-icon            # or: make desktop-icon, from the build director
 alienfx-desktop-icon --remove   # remove it
 ```
 
-It copies the launcher to your desktop folder (`xdg-user-dir DESKTOP`) and marks
-it as trusted, so GNOME, KDE, LXQt and Xfce run it without asking first.
+It copies the launcher to your desktop folder (`xdg-user-dir DESKTOP`), pointing
+directly at the installed logo image so it always shows, and marks it as trusted,
+so GNOME, KDE, LXQt and Xfce run it without asking first.
 
 Without installing, the programs are in `build/bin`:
 
