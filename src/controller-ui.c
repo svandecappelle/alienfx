@@ -856,6 +856,7 @@ typedef struct {
     PowerStyle styles[POWER_STATE_COUNT];
     ZoneLight lights[LIGHT_COUNT];
     int light_count;
+    int live_state;
 } PowerJob;
 
 static void hardware_to_rgba(const int rgb[3], GdkRGBA *out) {
@@ -944,7 +945,7 @@ static void power_write_thread(GTask *task, gpointer source, gpointer data, GCan
     (void) source;
     (void) cancellable;
     PowerJob *job = data;
-    int status = power_write(app.usbhandle, job->styles, job->lights, job->light_count);
+    int status = power_write(app.usbhandle, job->styles, job->lights, job->light_count, job->live_state);
     g_task_return_boolean(task, status == 0);
 }
 
@@ -977,6 +978,7 @@ static void on_power_write(GtkButton *button, gpointer data) {
     // grouped by color to send fewer packets
     PowerJob *job = g_new0(PowerJob, 1);
     memcpy(job->styles, zones_power_styles(), sizeof(job->styles));
+    job->live_state = power_current_state();
     for (int i = 0; i < LIGHT_COUNT; i += 1) {
         int rgb[3], found = 0;
         zones_get_hardware_color(i, &rgb[0], &rgb[1], &rgb[2]);

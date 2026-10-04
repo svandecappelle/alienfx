@@ -53,10 +53,12 @@ typedef struct {
 } ZoneLight;
 
 // Store the power button styles in the controller, together with the colors of
-// the other zones for every awake state. Takes a few seconds.
+// the other zones for every awake state, then run the program of live_state so
+// the lights match right away (the controller only switches programs on power
+// events). live_state -1 runs the boot program. Takes a few seconds.
 // Returns 0 on success, -1 on a USB error.
 int power_write(libusb_device_handle *usbhandle, const PowerStyle styles[POWER_STATE_COUNT],
-        const ZoneLight *lights, int light_count);
+        const ZoneLight *lights, int light_count, int live_state);
 
 // Current power state read from /sys/class/power_supply, -1 when unknown
 int power_current_state(void);

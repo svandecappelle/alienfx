@@ -184,7 +184,7 @@ static void send_state(Link *link, int state_code, PowerState state, const Power
 }
 
 int power_write(libusb_device_handle *usbhandle, const PowerStyle styles[POWER_STATE_COUNT],
-        const ZoneLight *lights, int light_count) {
+        const ZoneLight *lights, int light_count, int live_state) {
     Link link = {usbhandle, 0};
 
     send_command(&link, CMD_GET_STATUS, 0);
@@ -201,8 +201,12 @@ int power_write(libusb_device_handle *usbhandle, const PowerStyle styles[POWER_S
     speed[3] = EFFECT_SPEED & 0xff;
     send(&link, speed);
 
-    // Run the boot program now so the lights match without waiting for a power event
-    send_state(&link, 0, POWER_STATE_BOOT, &styles[POWER_STATE_BOOT], lights, light_count);
+    // Run the program of the current state now: the controller would otherwise
+    // keep the last one it ran until the next power event
+    if (live_state < 0 || live_state >= POWER_STATE_COUNT) {
+        live_state = POWER_STATE_BOOT;
+    }
+    send_state(&link, 0, live_state, &styles[live_state], lights, light_count);
     send_command(&link, CMD_TRANSMIT_EXECUTE, 0);
 
     return link.failed ? -1 : 0;
