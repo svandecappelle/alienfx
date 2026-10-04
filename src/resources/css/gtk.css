@@ -224,6 +224,10 @@ scale value {
   background: shade(@accent, 1.15);
 }
 
+.action:disabled {
+  opacity: 0.4;
+}
+
 /* Presets */
 .preset {
   padding: 10px;
@@ -319,4 +323,36 @@ scale value {
 .empty {
   font-size: 12px;
   color: #6a6e8a;
+}
+
+/* Power button */
+.power-card {
+  margin-top: 0;
+  padding: 12px 12px 12px 14px;
+}
+
+.power-state {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.now-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: #03121b;
+  background: @accent;
+}
+
+.power-effect > button {
+  min-height: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.feedback.pending {
+  color: #ffb020;
 }

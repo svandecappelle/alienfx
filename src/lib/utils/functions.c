@@ -125,12 +125,12 @@ int usbread(libusb_device_handle* usbhandle, unsigned char* data, unsigned int l
             );
     if (readbytes!=READ_DATA_SIZE)
         return LIBUSB_READ_ERR;
-    fprintf(stderr,"read>  ");
+    if (debug) fprintf(stderr,"read>  ");
     for (i=0;i<READ_DATA_SIZE;i++) {
         data[i]=buf[i];
-        fprintf(stderr,"%02x ",0xff&((unsigned int)data[i]));
+        if (debug) fprintf(stderr,"%02x ",0xff&((unsigned int)data[i]));
     }
-    fprintf(stderr,"\n");
+    if (debug) fprintf(stderr,"\n");
     return OK;
 }
 

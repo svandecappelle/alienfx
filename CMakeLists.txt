@@ -62,6 +62,8 @@ add_executable(
 
     src/lib/profile.h
     src/lib/profile.c
+    src/lib/power.h
+    src/lib/power.c
     src/lib/zones.h
     src/lib/zones.c
     src/lib/laptop-view.h

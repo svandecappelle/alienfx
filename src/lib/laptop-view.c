@@ -43,9 +43,9 @@ static const Rect MEDIABAR = MEDIABAR_RECT;
 static const Rect HEAD = HEAD_RECT;
 static const Rect TOUCHPAD = TOUCHPAD_RECT;
 
-// First match wins: the alien head sits on top of the media bar
+// First match wins: the power button sits on top of the media bar
 static const HitRegion HIT_REGIONS[] = {
-    {LIGHT_LOGO, HEAD_RECT},
+    {LIGHT_POWER_BUTTON, HEAD_RECT},
     {LIGHT_LOGO, LOGO_TEXT_RECT},
     {LIGHT_MEDIABAR, MEDIABAR_RECT},
     {LIGHT_SPEAKERS, SPEAKER_LEFT_RECT},
@@ -107,6 +107,9 @@ typedef struct {
     double scale, ox, oy;
     LaptopViewSelectFunc on_select;
     gpointer user_data;
+    int power_state;        // shown on the power button, -1 when unknown
+    guint tick_id;          // animation of a pulsing / blinking power button
+    gint64 last_frame;
 } LaptopView;
 
 // ---------------------------------------------------------------------------
@@ -135,10 +138,8 @@ static double intensity(const GdkRGBA *c) {
     return MAX(c->red, MAX(c->green, c->blue));
 }
 
-// Lit color of a zone, slightly washed towards white like a real LED behind plastic
-static void lit_color(int zone, GdkRGBA *out, double *level) {
-    GdkRGBA c;
-    zones_get_effective_color(zone, &c);
+// Lit color, slightly washed towards white like a real LED behind plastic
+static void glow_color(GdkRGBA c, GdkRGBA *out, double *level) {
     *level = intensity(&c);
     if (*level > 0) {
         // Normalize so a dim color stays recognizable, the level carries the brightness
@@ -150,6 +151,12 @@ static void lit_color(int zone, GdkRGBA *out, double *level) {
     out->green = c.green + (1 - c.green) * 0.15;
     out->blue = c.blue + (1 - c.blue) * 0.15;
     out->alpha = 1;
+}
+
+static void lit_color(int zone, GdkRGBA *out, double *level) {
+    GdkRGBA c;
+    zones_get_effective_color(zone, &c);
+    glow_color(c, out, level);
 }
 
 static void vertical_gradient(cairo_t *cr, double y0, double y1, guint top, guint bottom) {
@@ -285,8 +292,70 @@ static void draw_logo(cairo_t *cr, LaptopView *view) {
     cairo_fill(cr);
     g_object_unref(layout);
     cairo_restore(cr);
+}
 
-    // Alien head on the media bar
+static const PowerStyle * shown_power_style(LaptopView *view) {
+    int state = view->power_state >= 0 ? view->power_state : POWER_STATE_AC_CHARGED;
+    return &zones_power_styles()[state];
+}
+
+static gboolean is_animated(const PowerStyle *style) {
+    return style->effect == POWER_EFFECT_PULSE || style->effect == POWER_EFFECT_BLINK;
+}
+
+static gboolean on_tick(GtkWidget *widget, GdkFrameClock *clock, gpointer data) {
+    LaptopView *view = data;
+    if (!is_animated(shown_power_style(view))) {
+        view->tick_id = 0;
+        return G_SOURCE_REMOVE;
+    }
+    // Around 20 frames per second is plenty for a slow pulse
+    gint64 now = gdk_frame_clock_get_frame_time(clock);
+    if (now - view->last_frame >= 50000) {
+        view->last_frame = now;
+        gtk_widget_queue_draw(widget);
+    }
+    return G_SOURCE_CONTINUE;
+}
+
+// Color of the power button right now, following its effect
+static GdkRGBA power_button_color(const PowerStyle *style) {
+    double t = g_get_monotonic_time() / 1e6;
+    const int *a = style->color, *b = style->color2;
+    double mix = 0;
+
+    switch (style->effect) {
+        case POWER_EFFECT_OFF:
+        case POWER_EFFECT_COUNT:
+            return (GdkRGBA) {0, 0, 0, 1};
+        case POWER_EFFECT_STEADY:
+            break;
+        case POWER_EFFECT_BLINK:
+            if (fmod(t, 1.0) >= 0.5) {
+                return (GdkRGBA) {0, 0, 0, 1};
+            }
+            break;
+        case POWER_EFFECT_PULSE:
+            mix = (1 - cos(2 * G_PI * t / 2.4)) / 2;
+            break;
+    }
+    return (GdkRGBA) {
+        (a[0] + (b[0] - a[0]) * mix) / 15.0,
+        (a[1] + (b[1] - a[1]) * mix) / 15.0,
+        (a[2] + (b[2] - a[2]) * mix) / 15.0,
+        1,
+    };
+}
+
+// Alien head shaped power button, in the middle of the media bar
+static void draw_power_button(cairo_t *cr, GtkWidget *widget, LaptopView *view) {
+    const PowerStyle *style = shown_power_style(view);
+    if (is_animated(style) && view->tick_id == 0) {
+        view->tick_id = gtk_widget_add_tick_callback(widget, on_tick, view, NULL);
+    }
+    GdkRGBA color;
+    double level;
+    glow_color(power_button_color(style), &color, &level);
     double cx = HEAD.x + HEAD.w / 2, cy = HEAD.y + HEAD.h / 2, s = 0.34;
 
     cairo_arc(cr, cx, cy, 0.5, 0, 2 * G_PI);
@@ -607,7 +676,6 @@ static void outline_zone(cairo_t *cr, LaptopView *view, int zone, gboolean selec
 }
 
 static void draw_laptop(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data) {
-    (void) area;
     LaptopView *view = data;
 
     view->scale = MIN(width / (VIEW_WIDTH + 1.0), height / (VIEW_HEIGHT + 1.0));
@@ -622,6 +690,7 @@ static void draw_laptop(GtkDrawingArea *area, cairo_t *cr, int width, int height
     draw_speaker(cr, &SPEAKER_RIGHT);
     draw_mediabar(cr);
     draw_logo(cr, view);
+    draw_power_button(cr, GTK_WIDGET(area), view);
     draw_keyboard(cr, view);
     draw_touchpad(cr);
 
@@ -716,7 +785,7 @@ static gboolean on_query_tooltip(GtkWidget *widget, int x, int y, gboolean keybo
     if (zone == LIGHT_NONE) {
         return FALSE;
     }
-    gtk_tooltip_set_text(tooltip, zones_get(zone)->label);
+    gtk_tooltip_set_text(tooltip, zone == LIGHT_POWER_BUTTON ? "Power button" : zones_get(zone)->label);
     return TRUE;
 }
 
@@ -725,6 +794,7 @@ GtkWidget * laptop_view_new(LaptopViewSelectFunc on_select, gpointer user_data) 
     LaptopView *view = g_new0(LaptopView, 1);
     view->selection = LIGHT_NONE;
     view->hover = LIGHT_NONE;
+    view->power_state = -1;
     view->on_select = on_select;
     view->user_data = user_data;
     g_object_set_data_full(G_OBJECT(area), "laptop-view", view, g_free);
@@ -754,5 +824,11 @@ GtkWidget * laptop_view_new(LaptopViewSelectFunc on_select, gpointer user_data) 
 void laptop_view_set_selection(GtkWidget *widget, int selection) {
     LaptopView *view = g_object_get_data(G_OBJECT(widget), "laptop-view");
     view->selection = selection;
+    gtk_widget_queue_draw(widget);
+}
+
+void laptop_view_set_power_state(GtkWidget *widget, int state) {
+    LaptopView *view = g_object_get_data(G_OBJECT(widget), "laptop-view");
+    view->power_state = state;
     gtk_widget_queue_draw(widget);
 }

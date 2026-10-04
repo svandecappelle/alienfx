@@ -1,4 +1,6 @@
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "zones.h"
 #include "utils/functions.h"
@@ -21,9 +23,20 @@ static LightZoneState zones[LIGHT_COUNT] = {
         ZONE_MEDIABAR, DEFAULT_COLOR, 1.0},
     {"speakers", "Speakers", "Left and right speaker grilles",
         ZONE_SPEAKER_LEFT | ZONE_SPEAKER_RIGHT, DEFAULT_COLOR, 1.0},
-    {"logo", "Logo", "Alien head and Alienware name",
+    {"logo", "Logo", "Alienware name and alien head on the lid",
         ZONE_ALIEN_HEAD | ZONE_ALIEN_NAME, DEFAULT_COLOR, 1.0},
 };
+
+static PowerStyle power_styles[POWER_STATE_COUNT];
+static gboolean power_styles_ready = FALSE;
+
+PowerStyle * zones_power_styles(void) {
+    if (!power_styles_ready) {
+        power_default_styles(power_styles);
+        power_styles_ready = TRUE;
+    }
+    return power_styles;
+}
 
 LightZoneState * zones_get(int zone) {
     if (zone < 0 || zone >= LIGHT_COUNT) {
@@ -91,6 +104,49 @@ void zones_write(libusb_device_handle *usbhandle, guint mask) {
     }
 }
 
+static gboolean parse_hardware_color(const char *text, int rgb[3]) {
+    return text != NULL && sscanf(text, "%d,%d,%d", &rgb[0], &rgb[1], &rgb[2]) == 3
+        && rgb[0] >= 0 && rgb[0] <= 15 && rgb[1] >= 0 && rgb[1] <= 15 && rgb[2] >= 0 && rgb[2] <= 15;
+}
+
+static void load_power_styles(GKeyFile *file) {
+    PowerStyle *styles = zones_power_styles();
+    for (int i = 0; i < POWER_STATE_COUNT; i += 1) {
+        char *group = g_strdup_printf("power-%s", POWER_STATES[i].key);
+        char *effect = g_key_file_get_string(file, group, "effect", NULL);
+        char *color = g_key_file_get_string(file, group, "color", NULL);
+        char *color2 = g_key_file_get_string(file, group, "color2", NULL);
+        PowerStyle style = styles[i];
+        for (int e = 0; effect != NULL && e < POWER_EFFECT_COUNT; e += 1) {
+            if (strcmp(effect, POWER_EFFECT_KEYS[e]) == 0) {
+                style.effect = e;
+            }
+        }
+        parse_hardware_color(color, style.color);
+        parse_hardware_color(color2, style.color2);
+        styles[i] = style;
+        g_free(effect);
+        g_free(color);
+        g_free(color2);
+        g_free(group);
+    }
+}
+
+static void save_power_styles(GKeyFile *file) {
+    PowerStyle *styles = zones_power_styles();
+    for (int i = 0; i < POWER_STATE_COUNT; i += 1) {
+        char *group = g_strdup_printf("power-%s", POWER_STATES[i].key);
+        char *color = g_strdup_printf("%d,%d,%d", styles[i].color[0], styles[i].color[1], styles[i].color[2]);
+        char *color2 = g_strdup_printf("%d,%d,%d", styles[i].color2[0], styles[i].color2[1], styles[i].color2[2]);
+        g_key_file_set_string(file, group, "effect", POWER_EFFECT_KEYS[styles[i].effect]);
+        g_key_file_set_string(file, group, "color", color);
+        g_key_file_set_string(file, group, "color2", color2);
+        g_free(color);
+        g_free(color2);
+        g_free(group);
+    }
+}
+
 static char * config_path(void) {
     return g_build_filename(g_get_user_config_dir(), "alienfx", "zones.ini", NULL);
 }
@@ -114,6 +170,7 @@ void zones_load(void) {
                 g_error_free(error);
             }
         }
+        load_power_styles(file);
     }
 
     g_key_file_free(file);
@@ -131,6 +188,7 @@ void zones_save(void) {
         g_key_file_set_double(file, zones[i].key, "brightness", zones[i].brightness);
         g_free(color);
     }
+    save_power_styles(file);
 
     g_mkdir_with_parents(dir, 0755);
     g_key_file_save_to_file(file, path, NULL);

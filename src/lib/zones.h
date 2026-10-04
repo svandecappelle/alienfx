@@ -4,6 +4,8 @@
 #include <gtk/gtk.h>
 #include <libusb-1.0/libusb.h>
 
+#include "power.h"
+
 // Every lighting zone the UI can drive
 typedef enum {
     LIGHT_KEYBOARD_LEFT,
@@ -19,6 +21,8 @@ typedef enum {
 
 // Special selections
 #define LIGHT_ALL LIGHT_COUNT
+// The power button has a style per power state instead of a live color
+#define LIGHT_POWER_BUTTON (LIGHT_COUNT + 1)
 #define LIGHT_NONE -1
 
 typedef struct {
@@ -46,7 +50,10 @@ void zones_set_brightness(int selection, double brightness);
 // Send the zones of the given bitmask to the device (no-op when usbhandle is NULL)
 void zones_write(libusb_device_handle *usbhandle, guint mask);
 
-// Persist / restore colors in the user config dir
+// Power button style of each power state (POWER_STATE_COUNT entries)
+PowerStyle * zones_power_styles(void);
+
+// Persist / restore colors and power button styles in the user config dir
 void zones_load(void);
 void zones_save(void);
 

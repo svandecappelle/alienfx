@@ -11,4 +11,7 @@ GtkWidget * laptop_view_new(LaptopViewSelectFunc on_select, gpointer user_data);
 // Highlight a zone (LIGHT_ALL highlights the whole laptop, LIGHT_NONE nothing)
 void laptop_view_set_selection(GtkWidget *view, int selection);
 
+// Power state (POWER_STATE_*) whose style the power button shows, -1 when unknown
+void laptop_view_set_power_state(GtkWidget *view, int state);
+
 #endif

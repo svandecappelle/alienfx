@@ -1,4 +1,6 @@
 #include <gtk/gtk.h>
+#include <math.h>
+#include <string.h>
 
 #include "lib/laptop-view.h"
 #include "lib/profile.h"
@@ -40,7 +42,7 @@ typedef struct {
     guint flush_source;
 
     GtkWidget *view;
-    GtkWidget *chips[LIGHT_COUNT + 1];
+    GtkWidget *chips[LIGHT_POWER_BUTTON + 1];
     GtkWidget *zone_name;
     GtkWidget *zone_detail;
     GtkWidget *preview;
@@ -55,6 +57,18 @@ typedef struct {
     GtkWidget *profile_list;
     GtkWidget *profile_empty;
     guint feedback_source;
+
+    GtkWidget *values;
+    GtkWidget *zone_controls;
+    GtkWidget *power_controls;
+    GtkWidget *power_effects[POWER_STATE_COUNT];
+    GtkWidget *power_colors[POWER_STATE_COUNT];
+    GtkWidget *power_colors2[POWER_STATE_COUNT];
+    GtkWidget *power_now[POWER_STATE_COUNT];
+    GtkWidget *power_write;
+    GtkWidget *power_feedback;
+    int power_state;
+    gboolean writing;
 } App;
 
 static App app;
@@ -64,7 +78,7 @@ static App app;
 // ---------------------------------------------------------------------------
 
 static int first_selected_zone(void) {
-    return app.selection == LIGHT_ALL ? LIGHT_KEYBOARD_LEFT : app.selection;
+    return app.selection == LIGHT_ALL || app.selection == LIGHT_POWER_BUTTON ? LIGHT_KEYBOARD_LEFT : app.selection;
 }
 
 // TRUE when every zone of the selection displays the same color
@@ -84,6 +98,10 @@ static gboolean selection_is_uniform(void) {
 
 static gboolean flush(gpointer data) {
     (void) data;
+    if (app.writing) {
+        // The power button styles are being written, retry later
+        return G_SOURCE_CONTINUE;
+    }
     zones_write(app.usbhandle, app.dirty);
     zones_save();
     app.dirty = 0;
@@ -120,7 +138,21 @@ static void refresh_colors(void) {
 }
 
 static void refresh_panel(void) {
+    gboolean power = app.selection == LIGHT_POWER_BUTTON;
+    gtk_widget_set_visible(app.zone_controls, !power);
+    gtk_widget_set_visible(app.power_controls, power);
+    gtk_widget_set_visible(app.preview, !power);
+    gtk_widget_set_visible(app.values, !power);
+
     app.updating = TRUE;
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app.chips[app.selection]), TRUE);
+    if (power) {
+        gtk_label_set_text(GTK_LABEL(app.zone_name), "Power button");
+        gtk_label_set_text(GTK_LABEL(app.zone_detail), "Alien head power button, one style per power state");
+        app.updating = FALSE;
+        gtk_widget_queue_draw(app.view);
+        return;
+    }
 
     if (app.selection == LIGHT_ALL) {
         gtk_label_set_text(GTK_LABEL(app.zone_name), "All zones");
@@ -392,6 +424,13 @@ static GtkWidget * build_zone_chips(void) {
         app.chips[zone] = chip;
         gtk_flow_box_append(GTK_FLOW_BOX(flow), chip);
     }
+
+    GtkWidget *power = gtk_toggle_button_new_with_label("Power button");
+    gtk_widget_add_css_class(power, "chip");
+    gtk_toggle_button_set_group(GTK_TOGGLE_BUTTON(power), group);
+    g_signal_connect(power, "toggled", G_CALLBACK(on_chip_toggled), GINT_TO_POINTER(LIGHT_POWER_BUTTON));
+    app.chips[LIGHT_POWER_BUTTON] = power;
+    gtk_flow_box_append(GTK_FLOW_BOX(flow), power);
     return flow;
 }
 
@@ -413,6 +452,7 @@ static GtkWidget * build_color_card(void) {
     gtk_widget_set_margin_bottom(app.preview, 6);
 
     GtkWidget *values = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    app.values = values;
     app.hex_label = gtk_label_new(NULL);
     gtk_widget_add_css_class(app.hex_label, "hex");
     app.bits_label = gtk_label_new(NULL);
@@ -805,6 +845,263 @@ static GtkWidget * build_profiles(void) {
     return section;
 }
 
+// ---------------------------------------------------------------------------
+// Power button: one style per power state, stored in the controller
+// ---------------------------------------------------------------------------
+
+static const char *POWER_EFFECT_LABELS[] = {"Off", "Steady", "Pulse", "Blink", NULL};
+
+typedef struct {
+    PowerStyle styles[POWER_STATE_COUNT];
+    ZoneLight lights[LIGHT_COUNT];
+    int light_count;
+} PowerJob;
+
+static void hardware_to_rgba(const int rgb[3], GdkRGBA *out) {
+    *out = (GdkRGBA) {rgb[0] / 15.0, rgb[1] / 15.0, rgb[2] / 15.0, 1};
+}
+
+static void rgba_to_hardware(const GdkRGBA *color, int rgb[3]) {
+    rgb[0] = (int) lround(CLAMP(color->red, 0, 1) * 15);
+    rgb[1] = (int) lround(CLAMP(color->green, 0, 1) * 15);
+    rgb[2] = (int) lround(CLAMP(color->blue, 0, 1) * 15);
+}
+
+static void show_power_feedback(const char *message, const char *css_class) {
+    gtk_label_set_text(GTK_LABEL(app.power_feedback), message);
+    gtk_widget_remove_css_class(app.power_feedback, "error");
+    gtk_widget_remove_css_class(app.power_feedback, "pending");
+    if (css_class != NULL) {
+        gtk_widget_add_css_class(app.power_feedback, css_class);
+    }
+    gtk_widget_set_visible(app.power_feedback, message != NULL);
+}
+
+// Show the widgets of a state row matching its style
+static void refresh_power_row(int state) {
+    const PowerStyle *style = &zones_power_styles()[state];
+    GdkRGBA color, color2;
+    hardware_to_rgba(style->color, &color);
+    hardware_to_rgba(style->color2, &color2);
+
+    app.updating = TRUE;
+    gtk_drop_down_set_selected(GTK_DROP_DOWN(app.power_effects[state]), style->effect);
+    gtk_color_dialog_button_set_rgba(GTK_COLOR_DIALOG_BUTTON(app.power_colors[state]), &color);
+    gtk_color_dialog_button_set_rgba(GTK_COLOR_DIALOG_BUTTON(app.power_colors2[state]), &color2);
+    app.updating = FALSE;
+
+    gtk_widget_set_visible(app.power_colors[state], style->effect != POWER_EFFECT_OFF);
+    gtk_widget_set_visible(app.power_colors2[state], style->effect == POWER_EFFECT_PULSE);
+    gtk_widget_set_visible(app.power_now[state], state == app.power_state);
+}
+
+static void refresh_power_rows(void) {
+    for (int i = 0; i < POWER_STATE_COUNT; i += 1) {
+        refresh_power_row(i);
+    }
+}
+
+static void power_styles_changed(void) {
+    zones_save();
+    gtk_widget_queue_draw(app.view);
+    show_power_feedback("Not written to the laptop yet", "pending");
+}
+
+static void on_power_effect(GObject *dropdown, GParamSpec *pspec, gpointer data) {
+    (void) pspec;
+    if (app.updating) {
+        return;
+    }
+    int state = GPOINTER_TO_INT(data);
+    zones_power_styles()[state].effect = gtk_drop_down_get_selected(GTK_DROP_DOWN(dropdown));
+    refresh_power_row(state);
+    power_styles_changed();
+}
+
+// data: state * 2 for the first color, state * 2 + 1 for the second one
+static void on_power_color(GObject *button, GParamSpec *pspec, gpointer data) {
+    (void) pspec;
+    if (app.updating) {
+        return;
+    }
+    int state = GPOINTER_TO_INT(data) / 2;
+    PowerStyle *style = &zones_power_styles()[state];
+    const GdkRGBA *color = gtk_color_dialog_button_get_rgba(GTK_COLOR_DIALOG_BUTTON(button));
+    rgba_to_hardware(color, GPOINTER_TO_INT(data) % 2 == 0 ? style->color : style->color2);
+    power_styles_changed();
+}
+
+static void on_power_defaults(GtkButton *button, gpointer data) {
+    (void) button;
+    (void) data;
+    power_default_styles(zones_power_styles());
+    refresh_power_rows();
+    power_styles_changed();
+}
+
+static void power_write_thread(GTask *task, gpointer source, gpointer data, GCancellable *cancellable) {
+    (void) source;
+    (void) cancellable;
+    PowerJob *job = data;
+    int status = power_write(app.usbhandle, job->styles, job->lights, job->light_count);
+    g_task_return_boolean(task, status == 0);
+}
+
+static void power_write_done(GObject *source, GAsyncResult *result, gpointer data) {
+    (void) source;
+    (void) data;
+    gboolean written = g_task_propagate_boolean(G_TASK(result), NULL);
+    app.writing = FALSE;
+    gtk_widget_set_sensitive(app.power_write, TRUE);
+    gtk_button_set_label(GTK_BUTTON(app.power_write), "Write to laptop");
+    if (written) {
+        show_power_feedback("Written to the laptop", NULL);
+    } else {
+        show_power_feedback("Writing failed: USB error, see the terminal", "error");
+    }
+}
+
+static void on_power_write(GtkButton *button, gpointer data) {
+    (void) data;
+    if (app.usbhandle == NULL || app.writing) {
+        return;
+    }
+    // Send pending live colors now, the USB device is busy during the write
+    if (app.flush_source != 0) {
+        g_source_remove(app.flush_source);
+        flush(NULL);
+    }
+
+    // The other zones keep their current colors in every awake state,
+    // grouped by color to send fewer packets
+    PowerJob *job = g_new0(PowerJob, 1);
+    memcpy(job->styles, zones_power_styles(), sizeof(job->styles));
+    for (int i = 0; i < LIGHT_COUNT; i += 1) {
+        int rgb[3], found = 0;
+        zones_get_hardware_color(i, &rgb[0], &rgb[1], &rgb[2]);
+        for (int j = 0; j < job->light_count && !found; j += 1) {
+            if (memcmp(job->lights[j].rgb, rgb, sizeof(rgb)) == 0) {
+                job->lights[j].mask |= zones_get(i)->mask;
+                found = 1;
+            }
+        }
+        if (!found) {
+            job->lights[job->light_count].mask = zones_get(i)->mask;
+            memcpy(job->lights[job->light_count].rgb, rgb, sizeof(rgb));
+            job->light_count += 1;
+        }
+    }
+
+    app.writing = TRUE;
+    gtk_widget_set_sensitive(GTK_WIDGET(button), FALSE);
+    gtk_button_set_label(button, "Writing…");
+    show_power_feedback(NULL, NULL);
+
+    GTask *task = g_task_new(NULL, NULL, power_write_done, NULL);
+    g_task_set_task_data(task, job, g_free);
+    g_task_run_in_thread(task, power_write_thread);
+    g_object_unref(task);
+}
+
+static gboolean poll_power_state(gpointer data) {
+    (void) data;
+    int state = power_current_state();
+    if (state != app.power_state) {
+        app.power_state = state;
+        laptop_view_set_power_state(app.view, state);
+        refresh_power_rows();
+    }
+    return G_SOURCE_CONTINUE;
+}
+
+static GtkWidget * build_power_controls(void) {
+    GtkWidget *section = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_box_append(GTK_BOX(section), section_title("POWER STATES"));
+
+    GtkWidget *grid = gtk_grid_new();
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 6);
+    gtk_widget_add_css_class(grid, "card");
+    gtk_widget_add_css_class(grid, "power-card");
+
+    GtkColorDialog *dialog = gtk_color_dialog_new();
+    gtk_color_dialog_set_with_alpha(dialog, FALSE);
+    gtk_color_dialog_set_title(dialog, "Power button color");
+
+    for (int i = 0; i < POWER_STATE_COUNT; i += 1) {
+        GtkWidget *name_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+        GtkWidget *name = gtk_label_new(POWER_STATES[i].label);
+        gtk_label_set_xalign(GTK_LABEL(name), 0);
+        gtk_widget_add_css_class(name, "power-state");
+        app.power_now[i] = gtk_label_new("now");
+        gtk_widget_add_css_class(app.power_now[i], "now-badge");
+        gtk_widget_set_valign(app.power_now[i], GTK_ALIGN_CENTER);
+        gtk_widget_set_tooltip_text(app.power_now[i], "Current power state of the laptop");
+        gtk_box_append(GTK_BOX(name_box), name);
+        gtk_box_append(GTK_BOX(name_box), app.power_now[i]);
+        gtk_widget_set_hexpand(name_box, TRUE);
+
+        app.power_effects[i] = gtk_drop_down_new_from_strings(POWER_EFFECT_LABELS);
+        gtk_widget_add_css_class(app.power_effects[i], "power-effect");
+        gtk_widget_set_valign(app.power_effects[i], GTK_ALIGN_CENTER);
+        g_signal_connect(app.power_effects[i], "notify::selected", G_CALLBACK(on_power_effect), GINT_TO_POINTER(i));
+
+        // gtk_color_dialog_button_new takes ownership of the dialog
+        app.power_colors[i] = gtk_color_dialog_button_new(g_object_ref(dialog));
+        app.power_colors2[i] = gtk_color_dialog_button_new(g_object_ref(dialog));
+        gtk_widget_set_tooltip_text(app.power_colors[i], "Color");
+        gtk_widget_set_tooltip_text(app.power_colors2[i], "Pulses to this color");
+        g_signal_connect(app.power_colors[i], "notify::rgba", G_CALLBACK(on_power_color), GINT_TO_POINTER(i * 2));
+        g_signal_connect(app.power_colors2[i], "notify::rgba", G_CALLBACK(on_power_color), GINT_TO_POINTER(i * 2 + 1));
+
+        gtk_grid_attach(GTK_GRID(grid), name_box, 0, i, 1, 1);
+        gtk_grid_attach(GTK_GRID(grid), app.power_effects[i], 1, i, 1, 1);
+        gtk_grid_attach(GTK_GRID(grid), app.power_colors[i], 2, i, 1, 1);
+        gtk_grid_attach(GTK_GRID(grid), app.power_colors2[i], 3, i, 1, 1);
+    }
+    g_object_unref(dialog);
+
+    GtkWidget *actions = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_box_set_homogeneous(GTK_BOX(actions), TRUE);
+    gtk_widget_set_margin_top(actions, 6);
+    app.power_write = gtk_button_new_with_label("Write to laptop");
+    gtk_widget_add_css_class(app.power_write, "action");
+    gtk_widget_add_css_class(app.power_write, "primary");
+    g_signal_connect(app.power_write, "clicked", G_CALLBACK(on_power_write), NULL);
+    if (app.usbhandle == NULL) {
+        gtk_widget_set_sensitive(app.power_write, FALSE);
+        gtk_widget_set_tooltip_text(app.power_write, "No AlienFX device (preview mode)");
+    }
+    GtkWidget *defaults = gtk_button_new_with_label("Dell defaults");
+    gtk_widget_add_css_class(defaults, "action");
+    g_signal_connect(defaults, "clicked", G_CALLBACK(on_power_defaults), NULL);
+    gtk_box_append(GTK_BOX(actions), app.power_write);
+    gtk_box_append(GTK_BOX(actions), defaults);
+
+    app.power_feedback = gtk_label_new(NULL);
+    gtk_label_set_xalign(GTK_LABEL(app.power_feedback), 0);
+    gtk_label_set_wrap(GTK_LABEL(app.power_feedback), TRUE);
+    gtk_widget_add_css_class(app.power_feedback, "feedback");
+    gtk_widget_set_visible(app.power_feedback, FALSE);
+
+    GtkWidget *note = gtk_label_new(
+            "The laptop drives the power button from its power state, so a style is "
+            "stored in the keyboard controller for each state. Writing also stores the "
+            "current colors of the other zones, kept when the power source changes.");
+    gtk_label_set_xalign(GTK_LABEL(note), 0);
+    gtk_label_set_wrap(GTK_LABEL(note), TRUE);
+    gtk_widget_add_css_class(note, "empty");
+
+    gtk_box_append(GTK_BOX(section), grid);
+    gtk_box_append(GTK_BOX(section), actions);
+    gtk_box_append(GTK_BOX(section), app.power_feedback);
+    gtk_box_append(GTK_BOX(section), note);
+
+    app.power_state = power_current_state();
+    refresh_power_rows();
+    return section;
+}
+
 static GtkWidget * build_side_panel(void) {
     GtkWidget *panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     gtk_widget_add_css_class(panel, "panel-content");
@@ -813,18 +1110,25 @@ static GtkWidget * build_side_panel(void) {
     gtk_box_append(GTK_BOX(panel), build_zone_chips());
     gtk_box_append(GTK_BOX(panel), build_color_card());
 
-    gtk_box_append(GTK_BOX(panel), section_title("COLOR"));
-    gtk_box_append(GTK_BOX(panel), build_palette());
-    gtk_box_append(GTK_BOX(panel), build_custom_color());
+    app.power_controls = build_power_controls();
+    gtk_box_append(GTK_BOX(panel), app.power_controls);
 
-    gtk_box_append(GTK_BOX(panel), section_title("BRIGHTNESS"));
+    // Controls of the live zones, hidden while the power button is selected
+    app.zone_controls = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *zone = app.zone_controls;
+    gtk_box_append(GTK_BOX(panel), zone);
+    gtk_box_append(GTK_BOX(zone), section_title("COLOR"));
+    gtk_box_append(GTK_BOX(zone), build_palette());
+    gtk_box_append(GTK_BOX(zone), build_custom_color());
+
+    gtk_box_append(GTK_BOX(zone), section_title("BRIGHTNESS"));
     app.brightness = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
     gtk_scale_set_draw_value(GTK_SCALE(app.brightness), TRUE);
     gtk_scale_set_value_pos(GTK_SCALE(app.brightness), GTK_POS_RIGHT);
     gtk_scale_set_format_value_func(GTK_SCALE(app.brightness), format_percent, NULL, NULL);
     g_signal_connect(app.brightness, "value-changed", G_CALLBACK(on_brightness_changed), NULL);
-    gtk_box_append(GTK_BOX(panel), app.brightness);
-    gtk_box_append(GTK_BOX(panel), build_actions());
+    gtk_box_append(GTK_BOX(zone), app.brightness);
+    gtk_box_append(GTK_BOX(zone), build_actions());
 
     gtk_box_append(GTK_BOX(panel), section_title("MY PROFILES"));
     gtk_box_append(GTK_BOX(panel), build_profiles());
@@ -872,6 +1176,9 @@ static void activate(GtkApplication *application) {
     gtk_box_append(GTK_BOX(content), build_side_panel());
     gtk_box_append(GTK_BOX(root), content);
     gtk_window_set_child(GTK_WINDOW(window), root);
+
+    laptop_view_set_power_state(app.view, app.power_state);
+    g_timeout_add_seconds(5, poll_power_state, NULL);
 
     select_zone(app.selection);
     gtk_window_present(GTK_WINDOW(window));

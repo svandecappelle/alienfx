@@ -42,7 +42,7 @@ static void usage(FILE *out) {
             "  -t, --touchpad COLOR               touchpad\n"
             "  -m, --mediabar COLOR               media bar\n"
             "  -s, --speakers COLOR               left and right speakers\n"
-            "  -l, --logo COLOR                   alien head and Alienware name\n"
+            "  -l, --logo COLOR                   Alienware name and alien head on the lid\n"
             "\n"
             "Profiles (stored in ~/.config/alienfx/profiles):\n"
             "  -p, --load NAME           apply a saved profile (other zones options can follow)\n"

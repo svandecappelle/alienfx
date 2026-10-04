@@ -33,6 +33,16 @@ in the side panel) then choose a color, a brightness or one of the presets.
   saved in the UI can be loaded with `controller --load NAME` and vice versa
 - Without a device (or without USB permissions) the UI starts in *preview mode*
 
+### Power button
+
+The power button light is driven by the laptop firmware from its power state,
+so it can't be given a live color like the other zones. Select *Power button*
+to give it a style for each power state (booting, plugged in, charging, on
+battery, battery critical and asleep): off, steady, pulse between two colors
+or blink. *Write to laptop* stores these styles in the keyboard controller,
+together with the current colors of the other zones so they are kept when the
+power source changes. *Dell defaults* restores the original styles.
+
 For UI you shoudl configure the rights in `/etc/udev/rules.d/usb.rules` with this content
 ```
 SUBSYSTEM=="usb", MODE="0666"
@@ -59,7 +69,7 @@ given, so `-a blue -1 red` turns everything blue except the left keys.
 | `-t`, `--touchpad`              | touchpad                      |
 | `-m`, `--mediabar`              | media bar                     |
 | `-s`, `--speakers`              | left and right speakers       |
-| `-l`, `--logo`                  | alien head and Alienware name |
+| `-l`, `--logo`                  | Alienware name and alien head on the lid |
 
 Each zone takes a color, written as:
 
