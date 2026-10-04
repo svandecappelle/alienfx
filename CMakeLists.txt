@@ -107,6 +107,11 @@ install(FILES data/${APP_ID}.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/m
 install(FILES data/icons/${APP_ID}.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 install(FILES udev/70-alienfx.rules DESTINATION ${UDEV_RULES_DIR})
 
+# alienfx-desktop-icon: puts a launcher on the user's desktop (run as the user)
+set(DESKTOP_FILE ${CMAKE_INSTALL_FULL_DATADIR}/applications/${APP_ID}.desktop)
+configure_file(data/alienfx-desktop-icon.in ${CMAKE_CURRENT_BINARY_DIR}/alienfx-desktop-icon @ONLY)
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/alienfx-desktop-icon DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 # Refresh the system caches, unless staging into a DESTDIR (packaging)
 install(CODE "
 if(\"\$ENV{DESTDIR}\" STREQUAL \"\")
@@ -122,4 +127,10 @@ add_custom_target(
     uninstall
     COMMAND ${CMAKE_COMMAND} -DMANIFEST=${CMAKE_BINARY_DIR}/install_manifest.txt -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/uninstall.cmake
     COMMENT "Uninstalling"
+)
+
+add_custom_target(
+    desktop-icon
+    COMMAND sh ${CMAKE_CURRENT_BINARY_DIR}/alienfx-desktop-icon
+    COMMENT "Creating the AlienFX icon on the desktop"
 )

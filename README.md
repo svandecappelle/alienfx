@@ -16,6 +16,7 @@ sudo cmake --install build      # or: cd build && sudo make install
 This installs:
 
 - `alienfx` (the UI, in your application menu as *AlienFX*) and `alienfx-cli`
+- `alienfx-desktop-icon`, to put an AlienFX icon on your desktop (see below)
 - the desktop entry, icon and AppStream metadata
 - a udev rule giving the logged in user access to the AlienFX controller, so
   neither program needs `sudo`
@@ -23,6 +24,18 @@ This installs:
 The prefix defaults to `/usr/local` (`-DCMAKE_INSTALL_PREFIX=/usr` to change it).
 The udev rule always goes to udev's own directory (`/usr/lib/udev/rules.d`).
 Remove everything with `sudo make uninstall` from the `build` directory.
+
+## Desktop icon
+
+To also get an AlienFX icon on your desktop, run as your user (not with `sudo`):
+
+```
+alienfx-desktop-icon            # or: make desktop-icon, from the build directory
+alienfx-desktop-icon --remove   # remove it
+```
+
+It copies the launcher to your desktop folder (`xdg-user-dir DESKTOP`) and marks
+it as trusted, so GNOME, KDE, LXQt and Xfce run it without asking first.
 
 Without installing, the programs are in `build/bin`:
 

@@ -1,0 +1,55 @@
+#!/bin/sh
+# Put an AlienFX launcher on the desktop of the current user, or remove it.
+#   alienfx-desktop-icon            create the icon
+#   alienfx-desktop-icon --remove   remove it
+set -eu
+
+DESKTOP_FILE="@DESKTOP_FILE@"
+NAME="@APP_ID@.desktop"
+
+if [ "$(id -u)" -eq 0 ]; then
+    echo "Run this as your user, not with sudo: the icon goes on your own desktop." >&2
+    exit 1
+fi
+
+desktop_dir=$(xdg-user-dir DESKTOP 2>/dev/null || true)
+if [ -z "$desktop_dir" ] || [ "$desktop_dir" = "$HOME" ]; then
+    desktop_dir="$HOME/Desktop"
+fi
+target="$desktop_dir/$NAME"
+
+case "${1:-}" in
+    --remove)
+        rm -f "$target"
+        echo "Removed $target"
+        exit 0
+        ;;
+    "")
+        ;;
+    *)
+        echo "Usage: $(basename "$0") [--remove]" >&2
+        exit 2
+        ;;
+esac
+
+if [ ! -f "$DESKTOP_FILE" ]; then
+    echo "$DESKTOP_FILE not found: install AlienFX first (sudo make install)." >&2
+    exit 1
+fi
+
+mkdir -p "$desktop_dir"
+cp "$DESKTOP_FILE" "$target"
+chmod +x "$target"
+
+# File managers ask before running a launcher they don't trust, each one with its
+# own mark: GNOME (metadata::trusted), LXQt / pcmanfm-qt (metadata::trust) and
+# Xfce (checksum of the file). Unknown attributes are simply ignored.
+if command -v gio >/dev/null 2>&1; then
+    gio set "$target" metadata::trusted true 2>/dev/null || true
+    gio set "$target" metadata::trust true 2>/dev/null || true
+    if command -v sha256sum >/dev/null 2>&1; then
+        gio set "$target" metadata::xfce-exe-checksum "$(sha256sum "$target" | cut -d' ' -f1)" 2>/dev/null || true
+    fi
+fi
+
+echo "Created $target"
