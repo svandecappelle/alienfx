@@ -18,7 +18,7 @@ UI mode:
 ./bin/alienFx
 ```
 
-Be sure you are able to connect to usbdevices or use script in sudo mode
+Install the udev rule below to access the device without `sudo`.
 
 ## UI
 
@@ -43,10 +43,18 @@ or blink. *Write to laptop* stores these styles in the keyboard controller,
 together with the current colors of the other zones so they are kept when the
 power source changes. *Dell defaults* restores the original styles.
 
-For UI you shoudl configure the rights in `/etc/udev/rules.d/usb.rules` with this content
+## USB permissions
+
+To use the UI and the script without `sudo`, install the udev rule that gives
+the logged in user access to the AlienFX controller (and only to it):
+
 ```
-SUBSYSTEM=="usb", MODE="0666"
+sudo cp udev/70-alienfx.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
+
+Avoid running the UI with `sudo`: GTK can't reach your desktop session as root
+and prints "Unable to acquire session bus".
 
 # Supported devices
 

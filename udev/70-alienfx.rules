@@ -1,0 +1,10 @@
+# AlienFX lighting controller of the Alienware M14x (R1 / R2)
+#
+# Gives the user logged in at the seat access to this device only, so neither
+# the UI nor the command line tool need sudo. Install with:
+#
+#   sudo cp udev/70-alienfx.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# Must sort before 73-seat-late.rules, which applies the uaccess tag.
+SUBSYSTEM=="usb", ATTR{idVendor}=="187c", ATTR{idProduct}=="0521", TAG+="uaccess"

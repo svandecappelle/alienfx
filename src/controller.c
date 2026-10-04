@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
         if (usbhandle == NULL) {
             fprintf(stderr, "%s: cannot open the AlienFX device (%04x:%04x).\n",
                     program_name, ALIENWARE_VENDORID, ALIENWARE_PRODUCTID_M14XR2);
-            fprintf(stderr, "Run with sudo or add the udev rule described in the README.\n");
+            fprintf(stderr, "Install udev/70-alienfx.rules (see README) or run with sudo.\n");
             return EXIT_FAILURE;
         }
         apply(usbhandle, &profile);

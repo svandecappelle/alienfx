@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 #include <math.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "lib/laptop-view.h"
 #include "lib/profile.h"
@@ -1185,6 +1186,10 @@ static void activate(GtkApplication *application) {
 }
 
 int main(int argc, char **argv) {
+    if (geteuid() == 0) {
+        g_printerr("AlienFX: running the UI as root is not needed and keeps GTK away from your session.\n"
+                "Install udev/70-alienfx.rules instead (see README) and run it as your user.\n");
+    }
     app.usbhandle = try_connect_usb();
     app.selection = LIGHT_ALL;
     zones_load();
