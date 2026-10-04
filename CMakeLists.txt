@@ -72,6 +72,7 @@ add_executable(
 
 target_link_libraries(controller usb-1.0)
 target_link_libraries(${PROJECT_NAME} PRIVATE usb-1.0 m ${GTK4_LIBRARIES})
-target_include_directories(${PROJECT_NAME} PRIVATE ${GTK4_INCLUDE_DIRS})
+# SYSTEM: warnings inside the GTK headers are not ours (they trip -pedantic)
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${GTK4_INCLUDE_DIRS})
 # The generated resource file embeds the CSS as one long string literal
 set_source_files_properties(${GRESOURCE_C} PROPERTIES COMPILE_OPTIONS -Wno-overlength-strings)
