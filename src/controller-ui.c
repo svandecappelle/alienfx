@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 
 #include "lib/laptop-view.h"
+#include "lib/profile.h"
 #include "lib/zones.h"
 #include "lib/utils/functions.h"
 
@@ -47,6 +48,13 @@ typedef struct {
     GtkWidget *bits_label;
     GtkWidget *color_button;
     GtkWidget *brightness;
+
+    GtkWidget *profile_entry;
+    GtkWidget *profile_save;
+    GtkWidget *profile_feedback;
+    GtkWidget *profile_list;
+    GtkWidget *profile_empty;
+    guint feedback_source;
 } App;
 
 static App app;
@@ -509,6 +517,294 @@ static GtkWidget * build_presets(void) {
     return grid;
 }
 
+// ---------------------------------------------------------------------------
+// Profiles (the same files as the command line tool)
+// ---------------------------------------------------------------------------
+
+// UI zones and profile zones are the same, in the same order
+G_STATIC_ASSERT((int) LIGHT_COUNT == (int) PROFILE_ZONE_COUNT);
+
+static void refresh_profiles(void);
+
+static gboolean hide_feedback(gpointer data) {
+    (void) data;
+    gtk_widget_set_visible(app.profile_feedback, FALSE);
+    app.feedback_source = 0;
+    return G_SOURCE_REMOVE;
+}
+
+static void show_feedback(const char *message, gboolean error) {
+    gtk_label_set_text(GTK_LABEL(app.profile_feedback), message);
+    if (error) {
+        gtk_widget_add_css_class(app.profile_feedback, "error");
+    } else {
+        gtk_widget_remove_css_class(app.profile_feedback, "error");
+    }
+    gtk_widget_set_visible(app.profile_feedback, TRUE);
+    if (app.feedback_source != 0) {
+        g_source_remove(app.feedback_source);
+    }
+    app.feedback_source = g_timeout_add_seconds(error ? 6 : 3, hide_feedback, NULL);
+}
+
+static gboolean profile_exists(const char *name) {
+    char path[4096];
+    return profile_valid_name(name)
+        && profile_path(name, path, sizeof(path)) == 0
+        && g_file_test(path, G_FILE_TEST_EXISTS);
+}
+
+static void update_save_button(void) {
+    const char *name = gtk_editable_get_text(GTK_EDITABLE(app.profile_entry));
+    gboolean valid = profile_valid_name(name);
+
+    gtk_widget_set_sensitive(app.profile_save, valid);
+    gtk_button_set_label(GTK_BUTTON(app.profile_save), valid && profile_exists(name) ? "Overwrite" : "Save");
+    if (name[0] != '\0' && !valid) {
+        gtk_widget_add_css_class(app.profile_entry, "error");
+        gtk_widget_set_tooltip_text(app.profile_entry, "Use letters, digits, '.', '_' or '-'");
+    } else {
+        gtk_widget_remove_css_class(app.profile_entry, "error");
+        gtk_widget_set_tooltip_text(app.profile_entry, NULL);
+    }
+}
+
+static void on_profile_name_changed(GtkEditable *editable, gpointer data) {
+    (void) editable;
+    (void) data;
+    update_save_button();
+}
+
+static void on_profile_save(GtkWidget *widget, gpointer data) {
+    (void) widget;
+    (void) data;
+    const char *name = gtk_editable_get_text(GTK_EDITABLE(app.profile_entry));
+    if (!profile_valid_name(name)) {
+        return;
+    }
+
+    Profile profile = {0};
+    for (int i = 0; i < LIGHT_COUNT; i += 1) {
+        profile.set[i] = 1;
+        zones_get_hardware_color(i, &profile.rgb[i][0], &profile.rgb[i][1], &profile.rgb[i][2]);
+    }
+    if (profile_save(name, &profile) != 0) {
+        show_feedback(profile_last_error(), TRUE);
+        return;
+    }
+
+    char *message = g_strdup_printf("Saved “%s”", name);
+    show_feedback(message, FALSE);
+    g_free(message);
+    refresh_profiles();
+    update_save_button();
+}
+
+static void apply_profile(const char *name) {
+    Profile profile = {0};
+    if (profile_load(name, &profile) != 0) {
+        show_feedback(profile_last_error(), TRUE);
+        return;
+    }
+
+    guint mask = 0;
+    for (int i = 0; i < LIGHT_COUNT; i += 1) {
+        if (profile.set[i]) {
+            GdkRGBA color = {profile.rgb[i][0] / 15.0, profile.rgb[i][1] / 15.0, profile.rgb[i][2] / 15.0, 1};
+            zones_set_color(i, &color);
+            zones_set_brightness(i, 1.0);
+            mask |= 1u << i;
+        }
+    }
+    schedule_flush(mask);
+    refresh_panel();
+
+    // Saving again after a tweak overwrites the profile
+    gtk_editable_set_text(GTK_EDITABLE(app.profile_entry), name);
+    char *message = g_strdup_printf("Applied “%s”", name);
+    show_feedback(message, FALSE);
+    g_free(message);
+}
+
+static void on_profile_activated(GtkListBox *box, GtkListBoxRow *row, gpointer data) {
+    (void) box;
+    (void) data;
+    apply_profile(g_object_get_data(G_OBJECT(row), "profile-name"));
+}
+
+static gboolean disarm_delete(gpointer data) {
+    GtkWidget *button = data;
+    g_object_set_data(G_OBJECT(button), "armed", NULL);
+    gtk_button_set_icon_name(GTK_BUTTON(button), "user-trash-symbolic");
+    gtk_widget_remove_css_class(button, "armed");
+    return G_SOURCE_REMOVE;
+}
+
+// First click arms the button, a second click within 3 seconds deletes
+static void on_profile_delete(GtkButton *button, gpointer data) {
+    (void) data;
+    const char *name = g_object_get_data(G_OBJECT(button), "profile-name");
+
+    if (g_object_get_data(G_OBJECT(button), "armed") == NULL) {
+        g_object_set_data(G_OBJECT(button), "armed", GINT_TO_POINTER(1));
+        gtk_button_set_label(button, "Delete?");
+        gtk_widget_add_css_class(GTK_WIDGET(button), "armed");
+        g_timeout_add_seconds_full(G_PRIORITY_DEFAULT, 3, disarm_delete, g_object_ref(button), g_object_unref);
+        return;
+    }
+
+    if (profile_delete(name) != 0) {
+        show_feedback(profile_last_error(), TRUE);
+        return;
+    }
+    char *message = g_strdup_printf("Deleted “%s”", name);
+    show_feedback(message, FALSE);
+    g_free(message);
+    refresh_profiles();
+    update_save_button();
+}
+
+// One block per zone: color when lit, dark when off, outline when the profile leaves it unchanged
+static void draw_profile_strip(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data) {
+    (void) area;
+    const Profile *profile = data;
+    const double gap = 3, group_gap = 6;
+    double block = (width - 6 * gap - group_gap) / PROFILE_ZONE_COUNT;
+
+    for (int i = 0; i < PROFILE_ZONE_COUNT; i += 1) {
+        // Small extra gap between the keyboard zones and the others
+        double x = i * (block + gap) + (i >= PROFILE_TOUCHPAD ? group_gap - gap : 0);
+        double r = 3;
+        cairo_new_sub_path(cr);
+        cairo_arc(cr, x + block - r, r, r, -G_PI / 2, 0);
+        cairo_arc(cr, x + block - r, height - r, r, 0, G_PI / 2);
+        cairo_arc(cr, x + r, height - r, r, G_PI / 2, G_PI);
+        cairo_arc(cr, x + r, r, r, G_PI, 3 * G_PI / 2);
+        cairo_close_path(cr);
+
+        const int *rgb = profile->rgb[i];
+        if (!profile->set[i]) {
+            cairo_set_source_rgba(cr, 1, 1, 1, 0.18);
+            cairo_set_line_width(cr, 1);
+            cairo_stroke(cr);
+        } else if (rgb[0] + rgb[1] + rgb[2] == 0) {
+            cairo_set_source_rgb(cr, 0.1, 0.1, 0.13);
+            cairo_fill_preserve(cr);
+            cairo_set_source_rgba(cr, 1, 1, 1, 0.1);
+            cairo_set_line_width(cr, 1);
+            cairo_stroke(cr);
+        } else {
+            cairo_set_source_rgb(cr, rgb[0] / 15.0, rgb[1] / 15.0, rgb[2] / 15.0);
+            cairo_fill(cr);
+        }
+    }
+}
+
+static void add_profile_row(const char *name, void *data) {
+    (void) data;
+    Profile *profile = g_new0(Profile, 1);
+    gboolean readable = profile_load(name, profile) == 0;
+
+    GtkWidget *content = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+
+    GtkWidget *strip = gtk_drawing_area_new();
+    gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(strip), 112);
+    gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(strip), 14);
+    gtk_widget_set_valign(strip, GTK_ALIGN_CENTER);
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(strip), draw_profile_strip, profile, g_free);
+
+    GtkWidget *label = gtk_label_new(name);
+    gtk_label_set_xalign(GTK_LABEL(label), 0);
+    gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
+    gtk_widget_set_hexpand(label, TRUE);
+    gtk_widget_add_css_class(label, "profile-name");
+    if (!readable) {
+        gtk_widget_add_css_class(label, "unreadable");
+        gtk_widget_set_tooltip_text(label, profile_last_error());
+    }
+
+    GtkWidget *remove = gtk_button_new_from_icon_name("user-trash-symbolic");
+    gtk_widget_add_css_class(remove, "flat");
+    gtk_widget_add_css_class(remove, "profile-delete");
+    gtk_widget_set_tooltip_text(remove, "Delete profile");
+    gtk_widget_set_valign(remove, GTK_ALIGN_CENTER);
+    g_object_set_data_full(G_OBJECT(remove), "profile-name", g_strdup(name), g_free);
+    g_signal_connect(remove, "clicked", G_CALLBACK(on_profile_delete), NULL);
+
+    gtk_box_append(GTK_BOX(content), strip);
+    gtk_box_append(GTK_BOX(content), label);
+    gtk_box_append(GTK_BOX(content), remove);
+
+    GtkWidget *row = gtk_list_box_row_new();
+    gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), content);
+    gtk_widget_set_tooltip_text(row, "Apply this profile");
+    g_object_set_data_full(G_OBJECT(row), "profile-name", g_strdup(name), g_free);
+    gtk_list_box_append(GTK_LIST_BOX(app.profile_list), row);
+}
+
+static void refresh_profiles(void) {
+    gtk_list_box_remove_all(GTK_LIST_BOX(app.profile_list));
+    int count = profile_list(add_profile_row, NULL);
+    gtk_widget_set_visible(app.profile_list, count > 0);
+    gtk_widget_set_visible(app.profile_empty, count <= 0);
+}
+
+// Profiles saved by the command line tool show up when coming back to the window
+static void on_window_active(GObject *window, GParamSpec *pspec, gpointer data) {
+    (void) pspec;
+    (void) data;
+    if (gtk_window_is_active(GTK_WINDOW(window))) {
+        refresh_profiles();
+        update_save_button();
+    }
+}
+
+static GtkWidget * build_profiles(void) {
+    GtkWidget *section = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+
+    GtkWidget *save_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    app.profile_entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(app.profile_entry), "Name the current colors");
+    gtk_entry_set_max_length(GTK_ENTRY(app.profile_entry), 64);
+    gtk_widget_set_hexpand(app.profile_entry, TRUE);
+    gtk_widget_add_css_class(app.profile_entry, "profile-entry");
+    g_signal_connect(app.profile_entry, "changed", G_CALLBACK(on_profile_name_changed), NULL);
+    g_signal_connect(app.profile_entry, "activate", G_CALLBACK(on_profile_save), NULL);
+
+    app.profile_save = gtk_button_new_with_label("Save");
+    gtk_widget_add_css_class(app.profile_save, "action");
+    gtk_widget_add_css_class(app.profile_save, "primary");
+    g_signal_connect(app.profile_save, "clicked", G_CALLBACK(on_profile_save), NULL);
+    gtk_box_append(GTK_BOX(save_row), app.profile_entry);
+    gtk_box_append(GTK_BOX(save_row), app.profile_save);
+
+    app.profile_feedback = gtk_label_new(NULL);
+    gtk_label_set_xalign(GTK_LABEL(app.profile_feedback), 0);
+    gtk_label_set_wrap(GTK_LABEL(app.profile_feedback), TRUE);
+    gtk_widget_add_css_class(app.profile_feedback, "feedback");
+    gtk_widget_set_visible(app.profile_feedback, FALSE);
+
+    app.profile_list = gtk_list_box_new();
+    gtk_list_box_set_selection_mode(GTK_LIST_BOX(app.profile_list), GTK_SELECTION_NONE);
+    gtk_list_box_set_activate_on_single_click(GTK_LIST_BOX(app.profile_list), TRUE);
+    gtk_widget_add_css_class(app.profile_list, "profile-list");
+    g_signal_connect(app.profile_list, "row-activated", G_CALLBACK(on_profile_activated), NULL);
+
+    app.profile_empty = gtk_label_new("No saved profile yet. Name the current colors and save them to reuse them later, from here or with controller --load.");
+    gtk_label_set_xalign(GTK_LABEL(app.profile_empty), 0);
+    gtk_label_set_wrap(GTK_LABEL(app.profile_empty), TRUE);
+    gtk_widget_add_css_class(app.profile_empty, "empty");
+
+    gtk_box_append(GTK_BOX(section), save_row);
+    gtk_box_append(GTK_BOX(section), app.profile_feedback);
+    gtk_box_append(GTK_BOX(section), app.profile_list);
+    gtk_box_append(GTK_BOX(section), app.profile_empty);
+
+    refresh_profiles();
+    update_save_button();
+    return section;
+}
+
 static GtkWidget * build_side_panel(void) {
     GtkWidget *panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     gtk_widget_add_css_class(panel, "panel-content");
@@ -530,6 +826,9 @@ static GtkWidget * build_side_panel(void) {
     gtk_box_append(GTK_BOX(panel), app.brightness);
     gtk_box_append(GTK_BOX(panel), build_actions());
 
+    gtk_box_append(GTK_BOX(panel), section_title("MY PROFILES"));
+    gtk_box_append(GTK_BOX(panel), build_profiles());
+
     gtk_box_append(GTK_BOX(panel), section_title("PRESETS"));
     gtk_box_append(GTK_BOX(panel), build_presets());
 
@@ -550,6 +849,7 @@ static void activate(GtkApplication *application) {
     gtk_window_set_default_size(GTK_WINDOW(window), 1320, 820);
     gtk_widget_add_css_class(window, "alienfx");
     gtk_window_set_titlebar(GTK_WINDOW(window), build_header());
+    g_signal_connect(window, "notify::is-active", G_CALLBACK(on_window_active), NULL);
 
     GtkWidget *root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     GtkWidget *strip = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);

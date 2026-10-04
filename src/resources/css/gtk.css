@@ -248,3 +248,75 @@ scale value {
   font-weight: 600;
   color: #c4c7dc;
 }
+
+/* Profiles */
+.profile-entry {
+  min-height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.profile-entry:focus-within {
+  border-color: @accent;
+}
+
+.profile-entry.error {
+  border-color: #ff6b6b;
+}
+
+.feedback {
+  font-size: 12px;
+  color: #2ee87a;
+}
+
+.feedback.error {
+  color: #ff6b6b;
+}
+
+.profile-list {
+  background: transparent;
+}
+
+.profile-list row {
+  padding: 6px 6px 6px 10px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.profile-list row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.profile-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.profile-name.unreadable {
+  color: #ff6b6b;
+}
+
+.profile-delete {
+  min-height: 0;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: #8a8ea8;
+}
+
+.profile-delete.armed {
+  color: white;
+  background: #e5484d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.empty {
+  font-size: 12px;
+  color: #6a6e8a;
+}

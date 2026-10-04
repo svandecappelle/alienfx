@@ -28,6 +28,9 @@ in the side panel) then choose a color, a brightness or one of the presets.
 - Zones: the 4 keyboard zones, touchpad, media bar, speakers and logo
 - The preview shows the colors as the hardware renders them (16 levels per channel)
 - Colors are saved in `~/.config/alienfx/zones.ini` and restored on the next launch
+- *My profiles*: name the current colors to save them, click a profile to apply it.
+  They are the same files as the script mode profiles (see below), so a profile
+  saved in the UI can be loaded with `controller --load NAME` and vice versa
 - Without a device (or without USB permissions) the UI starts in *preview mode*
 
 For UI you shoudl configure the rights in `/etc/udev/rules.d/usb.rules` with this content
