@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.alienfx.Controller</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <name>AlienFX</name>
+  <summary>Control the lights of an Alienware M14x</summary>
+  <description>
+    <p>
+      Set the colors of the keyboard zones, touchpad, media bar, speakers and logo
+      of an Alienware M14x laptop, with a live preview of the laptop.
+    </p>
+    <ul>
+      <li>Colors shown exactly as the hardware renders them</li>
+      <li>Presets and your own saved profiles, shared with the alienfx-cli command</li>
+      <li>Power button styles for each power state: plugged in, charging, on battery, battery critical</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">org.alienfx.Controller.desktop</launchable>
+  <url type="homepage">https://github.com/svandecappelle/alienfx</url>
+  <developer id="io.github.svandecappelle">
+    <name>Vandecappelle Steeve</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <binary>alienfx</binary>
+    <binary>alienfx-cli</binary>
+    <modalias>usb:v187Cp0521d*</modalias>
+  </provides>
+  <releases>
+    <release version="1.0.0" date="2026-10-04"/>
+  </releases>
+</component>

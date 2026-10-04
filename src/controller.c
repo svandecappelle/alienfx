@@ -24,7 +24,7 @@ typedef struct {
     const char *profile;
 } Step;
 
-static const char *program_name = "controller";
+static const char *program_name = "alienfx-cli";
 
 static void usage(FILE *out) {
     fprintf(out,
@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
         if (usbhandle == NULL) {
             fprintf(stderr, "%s: cannot open the AlienFX device (%04x:%04x).\n",
                     program_name, ALIENWARE_VENDORID, ALIENWARE_PRODUCTID_M14XR2);
-            fprintf(stderr, "Install udev/70-alienfx.rules (see README) or run with sudo.\n");
+            fprintf(stderr, "Install the udev rule (make install does it, see README) or run with sudo.\n");
             return EXIT_FAILURE;
         }
         apply(usbhandle, &profile);

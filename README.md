@@ -1,24 +1,35 @@
-# To build
+# AlienFX for Linux
 
-Using Cmake
-```
-mkdir build
-cd build
-cmake ../
-make
-```
+Control the lights of an Alienware M14x: a GTK 4 application (`alienfx`) and a
+command line tool (`alienfx-cli`).
 
-# To launch
-```
-Script mode:
-./bin/controller --all alien
-./bin/controller -a off -k '#ff2bd6' -t 15,15,15
+# Build and install
 
-UI mode:
-./bin/alienFx
+Requires CMake, a C compiler, GTK 4 and libusb 1.0.
+
+```
+cmake -B build
+cmake --build build
+sudo cmake --install build      # or: cd build && sudo make install
 ```
 
-Install the udev rule below to access the device without `sudo`.
+This installs:
+
+- `alienfx` (the UI, in your application menu as *AlienFX*) and `alienfx-cli`
+- the desktop entry, icon and AppStream metadata
+- a udev rule giving the logged in user access to the AlienFX controller, so
+  neither program needs `sudo`
+
+The prefix defaults to `/usr/local` (`-DCMAKE_INSTALL_PREFIX=/usr` to change it).
+The udev rule always goes to udev's own directory (`/usr/lib/udev/rules.d`).
+Remove everything with `sudo make uninstall` from the `build` directory.
+
+Without installing, the programs are in `build/bin`:
+
+```
+./build/bin/alienfx
+./build/bin/alienfx-cli --all alien
+```
 
 ## UI
 
@@ -30,7 +41,7 @@ in the side panel) then choose a color, a brightness or one of the presets.
 - Colors are saved in `~/.config/alienfx/zones.ini` and restored on the next launch
 - *My profiles*: name the current colors to save them, click a profile to apply it.
   They are the same files as the script mode profiles (see below), so a profile
-  saved in the UI can be loaded with `controller --load NAME` and vice versa
+  saved in the UI can be loaded with `alienfx-cli --load NAME` and vice versa
 - Without a device (or without USB permissions) the UI starts in *preview mode*
 
 ### Power button
@@ -45,8 +56,9 @@ power source changes. *Dell defaults* restores the original styles.
 
 ## USB permissions
 
-To use the UI and the script without `sudo`, install the udev rule that gives
-the logged in user access to the AlienFX controller (and only to it):
+`make install` installs the udev rule. To use the programs from `build/bin`
+without installing, install only the rule, which gives the logged in user
+access to the AlienFX controller (and only to it):
 
 ```
 sudo cp udev/70-alienfx.rules /etc/udev/rules.d/
@@ -66,7 +78,7 @@ and prints "Unable to acquire session bus".
 
 ## Script mode
 
-`./bin/controller --help` lists every option. Zones are applied in the order
+`alienfx-cli --help` lists every option. Zones are applied in the order
 given, so `-a blue -1 red` turns everything blue except the left keys.
 
 | Option                          | Zone                          |
@@ -99,10 +111,10 @@ stored in the home of the user who ran `sudo` and stay owned by that user.
 | `-D`, `--delete NAME`   | delete a profile                                       |
 
 ```
-./bin/controller -a off -k '#ff2bd6' -t white --save pink   # apply and save
-./bin/controller -n -a alien -l purple --save chill         # save without applying
-./bin/controller --load pink --touchpad off                 # load, then override a zone
-./bin/controller --list
+alienfx-cli -a off -k '#ff2bd6' -t white --save pink   # apply and save
+alienfx-cli -n -a alien -l purple --save chill         # save without applying
+alienfx-cli --load pink --touchpad off                 # load, then override a zone
+alienfx-cli --list
 ```
 
 A profile is a plain text file that can be written by hand. Each line is

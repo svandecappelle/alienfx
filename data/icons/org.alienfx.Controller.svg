@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#262734"/>
+      <stop offset="1" stop-color="#101118"/>
+    </linearGradient>
+    <linearGradient id="rainbow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff1a1a"/>
+      <stop offset="0.25" stop-color="#ffc400"/>
+      <stop offset="0.5" stop-color="#00ff55"/>
+      <stop offset="0.75" stop-color="#00b4ff"/>
+      <stop offset="1" stop-color="#ff2bd6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#00b4ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#00b4ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="head" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7fe0ff"/>
+      <stop offset="1" stop-color="#00b4ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded tile with a rainbow rim, like the lit keyboard -->
+  <rect x="6" y="6" width="116" height="116" rx="26" fill="url(#rainbow)"/>
+  <rect x="10" y="10" width="108" height="108" rx="22" fill="url(#body)"/>
+  <circle cx="64" cy="64" r="46" fill="url(#glow)"/>
+
+  <!-- Alien head -->
+  <path d="M64 104
+           C55 101 33 85 33 58
+           C33 37 47 24 64 24
+           C81 24 95 37 95 58
+           C95 85 73 101 64 104 Z"
+        fill="url(#head)"/>
+  <ellipse cx="51" cy="62" rx="11" ry="5.5" transform="rotate(30 51 62)" fill="#0c0d12"/>
+  <ellipse cx="77" cy="62" rx="11" ry="5.5" transform="rotate(-30 77 62)" fill="#0c0d12"/>
+</svg>

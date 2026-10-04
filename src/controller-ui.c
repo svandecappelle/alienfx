@@ -831,7 +831,7 @@ static GtkWidget * build_profiles(void) {
     gtk_widget_add_css_class(app.profile_list, "profile-list");
     g_signal_connect(app.profile_list, "row-activated", G_CALLBACK(on_profile_activated), NULL);
 
-    app.profile_empty = gtk_label_new("No saved profile yet. Name the current colors and save them to reuse them later, from here or with controller --load.");
+    app.profile_empty = gtk_label_new("No saved profile yet. Name the current colors and save them to reuse them later, from here or with alienfx-cli --load.");
     gtk_label_set_xalign(GTK_LABEL(app.profile_empty), 0);
     gtk_label_set_wrap(GTK_LABEL(app.profile_empty), TRUE);
     gtk_widget_add_css_class(app.profile_empty, "empty");
@@ -1151,6 +1151,7 @@ static void activate(GtkApplication *application) {
     g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", TRUE, NULL);
     load_css();
 
+    gtk_window_set_default_icon_name("org.alienfx.Controller");
     GtkWidget *window = gtk_application_window_new(application);
     gtk_window_set_title(GTK_WINDOW(window), "AlienFX");
     gtk_window_set_default_size(GTK_WINDOW(window), 1320, 820);
@@ -1190,7 +1191,7 @@ static void activate(GtkApplication *application) {
 int main(int argc, char **argv) {
     if (geteuid() == 0) {
         g_printerr("AlienFX: running the UI as root is not needed and keeps GTK away from your session.\n"
-                "Install udev/70-alienfx.rules instead (see README) and run it as your user.\n");
+                "Install the udev rule instead (make install does it, see README) and run it as your user.\n");
     }
     app.usbhandle = try_connect_usb();
     app.selection = LIGHT_ALL;

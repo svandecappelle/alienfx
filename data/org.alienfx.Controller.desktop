@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=AlienFX
+GenericName=Lighting Control
+Comment=Set the keyboard, touchpad and logo lights of an Alienware M14x
+Exec=alienfx
+Icon=org.alienfx.Controller
+Terminal=false
+Categories=Settings;HardwareSettings;GTK;
+Keywords=alienware;alienfx;keyboard;backlight;rgb;led;lighting;
+StartupNotify=true
