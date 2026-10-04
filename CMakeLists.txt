@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.10)
 project(alienFx)
 
 set(
@@ -40,7 +40,7 @@ add_executable(
     ${PROJECT_NAME}
     src/controller-ui.c
 
-    ${CMAKE_CURRENT_BINARY_DIR}/../${GRESOURCE_CSS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/${GRESOURCE_CSS}
 
     src/lib/utils/vars.h
     src/lib/utils/functions.h

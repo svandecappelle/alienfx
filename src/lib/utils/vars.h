@@ -1,6 +1,5 @@
 #ifndef VARS_H
 #define VARS_H
-#include "vars.h"
 
 #define debug 0
 

@@ -37,7 +37,7 @@ void usbattach(libusb_device_handle* usbhandle) {
 
 int usbsetdelay(libusb_device_handle* usbhandle,unsigned int delay) {
     unsigned char data[9];
-    unsigned int retval;
+    int retval;
     int i;
     delay=(delay/STEP_SPEED)*STEP_SPEED;	// quantize to step multiple
 
@@ -164,48 +164,44 @@ void wait(libusb_device_handle* usbhandle) {
     }
 }
 
+static int clamp_color(int v) {
+    if (v < 0) return 0;
+    if (v > 15) return 15;
+    return v;
+}
+
 void convertToRgb(RegionColor *r, char *arg) {
-    int i = 0;
-    const char delim[2] = ", ";
-    char *color = malloc(sizeof(arg));
-    color = strcpy(color, arg);
-    color = strtok(color, delim);
-    if (color != NULL) {
-        r->color[i] = atoi(color);
-        i += 1;
-    }
-    while (i < 3) {
+    const char delim[] = ", ";
+    char *copy = strdup(arg);
+    char *color = strtok(copy, delim);
+
+    for (int i = 0; i < 3; i += 1) {
+        r->color[i] = color != NULL ? clamp_color(atoi(color)) : 0;
         color = strtok(NULL, delim);
-        r->color[i] = atoi(color);
-        i += 1;
     }
+    free(copy);
 }
 
 void addValue(struct Chain *c, struct RegionColor *val) {
-    ChainValue *tmp = c->value;
-
-    c->value = (struct ChainValue *) malloc(sizeof(struct ChainValue));
-    c->value->value = val;
-    if (tmp != NULL) {
-        c->value->next = tmp;
-    } else {
-        c->value->next = NULL;
-    }
+    ChainValue *node = (struct ChainValue *) malloc(sizeof(struct ChainValue));
+    node->value = val;
+    node->next = c->value;
+    c->value = node;
 }
 
 struct RegionColor * add_region_color(struct Chain *colorChain, int region, char *color) {
-    static RegionColor c;
-    c = (RegionColor) {
+    RegionColor *c = (RegionColor *) malloc(sizeof(RegionColor));
+    *c = (RegionColor) {
         .region = region,
-            .color = {0, 0, 0}
+        .color = {0, 0, 0}
     };
-    convertToRgb(&c, color);
+    convertToRgb(c, color);
 
     if (colorChain != NULL) {
-        addValue(colorChain, &c);
+        addValue(colorChain, c);
     }
 
-    return &c;
+    return c;
 }
 
 void set_zone_color(libusb_device_handle*	usbhandle, int zone, int r, int g, int b) {
@@ -214,9 +210,9 @@ void set_zone_color(libusb_device_handle*	usbhandle, int zone, int r, int g, int
     unsigned char data[9]={0x02,0x03,0x05,0x00,0x00,0x01,0x0f,0xf0,0x00};
     data[4]=(zone>>8)&0xff;
     data[5]=(zone>>0)&0xff;
-    data[6]=(r<<4); //&0xf0;
-    data[6]|=g; //&0xf);
-    data[7]=(b<<4); //&0xf0;
+    data[6]=(r<<4)&0xf0;
+    data[6]|=g&0x0f;
+    data[7]=(b<<4)&0xf0;
     usbwrite(usbhandle,data,9);
     end(usbhandle);
     pge(usbhandle);

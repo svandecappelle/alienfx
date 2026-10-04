@@ -16,11 +16,10 @@ int main(int argc, char *argv[]) {
     int opt = -1;
     struct RegionColor *v;
     char *value;
-    Chain *colorChain = (Chain *) malloc(sizeof(Chain));
+    Chain *colorChain = (Chain *) calloc(1, sizeof(Chain));
 
     while ((opt = getopt(argc, argv, "k:l:s:m:t:")) > 0) {
-        value=malloc(strlen(optarg));
-        strcpy(value, optarg);
+        value = strdup(optarg);
 
         switch (opt) {
             case 'k':
