@@ -42,19 +42,4 @@
 #define ZONE_POWER_BUTTON 0x2000
 #define ZONE_ALIEN_NAME 0x0100
 
-typedef struct RegionColor {
-    int region;
-    int color[3];
-} RegionColor;
-
-typedef struct ChainValue {
-    struct RegionColor *value;
-    struct ChainValue *next;
-} ChainValue;
-
-typedef struct Chain {
-    struct ChainValue *value;
-    struct Chain *next;
-} Chain;
-
 #endif

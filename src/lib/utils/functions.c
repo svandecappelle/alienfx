@@ -164,46 +164,6 @@ void wait(libusb_device_handle* usbhandle) {
     }
 }
 
-static int clamp_color(int v) {
-    if (v < 0) return 0;
-    if (v > 15) return 15;
-    return v;
-}
-
-void convertToRgb(RegionColor *r, char *arg) {
-    const char delim[] = ", ";
-    char *copy = strdup(arg);
-    char *color = strtok(copy, delim);
-
-    for (int i = 0; i < 3; i += 1) {
-        r->color[i] = color != NULL ? clamp_color(atoi(color)) : 0;
-        color = strtok(NULL, delim);
-    }
-    free(copy);
-}
-
-void addValue(struct Chain *c, struct RegionColor *val) {
-    ChainValue *node = (struct ChainValue *) malloc(sizeof(struct ChainValue));
-    node->value = val;
-    node->next = c->value;
-    c->value = node;
-}
-
-struct RegionColor * add_region_color(struct Chain *colorChain, int region, char *color) {
-    RegionColor *c = (RegionColor *) malloc(sizeof(RegionColor));
-    *c = (RegionColor) {
-        .region = region,
-        .color = {0, 0, 0}
-    };
-    convertToRgb(c, color);
-
-    if (colorChain != NULL) {
-        addValue(colorChain, c);
-    }
-
-    return c;
-}
-
 void set_zone_color(libusb_device_handle*	usbhandle, int zone, int r, int g, int b) {
 
     // Old version

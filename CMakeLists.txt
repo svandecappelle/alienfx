@@ -41,6 +41,11 @@ add_executable(
     src/lib/utils/vars.h
     src/lib/utils/functions.h
     src/lib/utils/functions.c
+    src/lib/utils/color.h
+    src/lib/utils/color.c
+
+    src/lib/profile.h
+    src/lib/profile.c
 )
 
 add_executable(
