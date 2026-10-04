@@ -245,15 +245,22 @@ void set_zone_color(libusb_device_handle*	usbhandle, int zone, int r, int g, int
     // wait(usbhandle);
 }
 
-libusb_device_handle * connect_usb() {
+libusb_device_handle * try_connect_usb() {
     libusb_context* usbcontext;
     libusb_device_handle*	usbhandle;
     int ret = InitDevice(&usbcontext, &usbhandle, ALIENWARE_VENDORID, ALIENWARE_PRODUCTID_M14XR2);
     if (ret!=0) {
-        printf("Unable to access to Alienware keyboard please try with 'sudo'\n");
-        exit(1);
+        return NULL;
     }
     usbdetach(usbhandle);
     return usbhandle;
 }
 
+libusb_device_handle * connect_usb() {
+    libusb_device_handle*	usbhandle = try_connect_usb();
+    if (usbhandle == NULL) {
+        printf("Unable to access to Alienware keyboard please try with 'sudo'\n");
+        exit(1);
+    }
+    return usbhandle;
+}

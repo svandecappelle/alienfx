@@ -19,6 +19,16 @@ UI mode:
 
 Be sure you are able to connect to usbdevices or use script in sudo mode
 
+## UI
+
+The UI shows the laptop with its lights: click a zone on the drawing (or pick it
+in the side panel) then choose a color, a brightness or one of the presets.
+
+- Zones: the 4 keyboard zones, touchpad, media bar, speakers and logo
+- The preview shows the colors as the hardware renders them (16 levels per channel)
+- Colors are saved in `~/.config/alienfx/zones.ini` and restored on the next launch
+- Without a device (or without USB permissions) the UI starts in *preview mode*
+
 For UI you shoudl configure the rights in `/etc/udev/rules.d/usb.rules` with this content
 ```
 SUBSYSTEM=="usb", MODE="0666"
